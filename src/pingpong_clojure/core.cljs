@@ -10,7 +10,7 @@
 (defonce input-state (atom {:enemy {:leftDown false :rightDown false}
                             :own {:leftDown false :rightDown false}}))
 
-(defonce app-state (atom {:ball {:position {:x 800 :y 700} :step {:x 3 :y 3}}
+(defonce app-state (atom {:ball {:position {:x 800 :y 700} :step {:x 0 :y 3}}
                           :bars {:own {:x 10 :y 10} :enemy {:x 20 :y 20}}}))
 
 (defonce state* (atom {}))
@@ -82,7 +82,6 @@
    (bar-enemy)
    (bar-own)])
 
-
 (r/render-component [game-ui app-state] (. js/document (getElementById "app")))
 
 (defn update-input-state! [key value]
@@ -108,29 +107,37 @@
         x (get-in @app-state [:ball :step :y])]
     (if (and (< y 7) (> y -7))
          (swap! app-state update-in [:ball :step :y] #(if (< % 0) (dec %) (inc %))))
-    (if (and (< x 7) (> x -7))
+    (if (and (< x 7) (> x -7) (not x 0))
       (swap! app-state update-in [:ball :step :x] #(if (< % 0) (dec %) (inc %))))))
   
+(defn add-momentum! [f] 
+  (swap! app-state update-in [:ball :step :x] f))
+
 (defn handler []
-    (update-bars-locations!)
-    (if (ball-hit-side-wall?) (revert-direction-x))
-    (if (game-over?) (revert-direction-y))
-    (let [bcr (ball-location)
-          ballDirection (if (< (get-in @app-state [:ball :step :y]) 0) :up :down)]
-      (do
-        (if (and (= ballDirection :up)
-                 (collide? bcr (bar-location "enemy")))
-          (do
-            (println "COLLIDE ENEMY")
-            (revert-direction-y)
-            (increase-ball-speed!)))
-        (if (and (= ballDirection :down)
-                 (collide? bcr (bar-location "own")))
-          (do
-            (println "COLLIDE OWN")
-            (revert-direction-y)
-            (increase-ball-speed!)))))
-    (move-ball))
+  (update-bars-locations!)
+  (if (ball-hit-side-wall?) (revert-direction-x))
+  (if (game-over?) (revert-direction-y))
+  (let [bcr (ball-location)
+        ballDirection (if (< (get-in @app-state [:ball :step :y]) 0) :up :down)]
+    (do
+      (cond
+        (and (= ballDirection :up) (collide? bcr (bar-location "enemy")))
+        (do
+          (println "COLLIDE ENEMY")
+          (revert-direction-y)
+          (cond
+            (get-in @input-state [:enemy :rightDown]) (add-momentum! inc)
+            (get-in @input-state [:enemy :leftDown]) (add-momentum! dec))
+          (increase-ball-speed!))
+        (and (= ballDirection :down) (collide? bcr (bar-location "own")))
+        (do
+          (println "COLLIDE OWN")
+          (revert-direction-y)
+          (cond
+            (get-in @input-state [:own :rightDown]) (add-momentum! inc)
+            (get-in @input-state [:own :leftDown]) (add-momentum! dec))
+          (increase-ball-speed!)))))
+  (move-ball))
   
 (swap! state* assoc :polling-id (js/setInterval handler 10))
 
