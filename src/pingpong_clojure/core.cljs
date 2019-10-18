@@ -11,7 +11,7 @@
                             :own {:leftDown false :rightDown false}}))
 
 (defonce app-state (atom {:game {:state ':running}
-                          :ball {:position {:x 800 :y 700} :step {:x 0 :y 3}}
+                          :ball {:position {:x 200 :y 200} :step {:x 0 :y 3}}
                           :bars {:own {:x 10 :y 10} :enemy {:x 20 :y 20}}}))
 
 (defonce state* (atom {}))
@@ -127,12 +127,11 @@
     (do
       (update-bars-locations!)
       (if (ball-hit-side-wall?) (revert-direction-x))
-      (if (game-over?) (swap! app-state assoc-in [:game :state] :game-over))
-      (let [bcr (ball-location)
-            ballDirection (if (< (get-in app-state [:ball :step :y]) 0) :up :down)]
+      (let [ball (ball-location)
+            ballDirection (if (< (get-in @app-state [:ball :step :y]) 0) :up :down)]
         (do
           (cond
-            (and (= ballDirection :up) (collide? bcr (bar-location "enemy")))
+            (and (= ballDirection :up) (collide? ball (bar-location "enemy")))
             (do
               (println "COLLIDE ENEMY")
               (revert-direction-y)
@@ -140,7 +139,7 @@
                 (get-in @input-state [:enemy :rightDown]) (add-momentum! inc)
                 (get-in @input-state [:enemy :leftDown]) (add-momentum! dec))
               (increase-ball-speed!))
-            (and (= ballDirection :down) (collide? bcr (bar-location "own")))
+            (and (= ballDirection :down) (collide? ball (bar-location "own")))
             (do
               (println "COLLIDE OWN")
               (revert-direction-y)
@@ -148,7 +147,8 @@
                 (get-in @input-state [:own :rightDown]) (add-momentum! inc)
                 (get-in @input-state [:own :leftDown]) (add-momentum! dec))
               (increase-ball-speed!)))))
-      (move-ball))
+      (move-ball)
+      (if (game-over?) (swap! app-state assoc-in [:game :state] :game-over)))
     :else (js/clearInterval (:polling-id @state*))))
   
 (swap! state* assoc :polling-id (js/setInterval handler 10))
