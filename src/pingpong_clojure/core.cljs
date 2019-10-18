@@ -97,17 +97,23 @@
 (.addEventListener js/window "keyup" keyup-listener)
 
 (defn update-bars-locations! []
-  (if (= true (get-in @input-state [:own :rightDown])) (swap! app-state update-in [:bars :own :x] inc))
-  (if (= true (get-in @input-state [:own :leftDown])) (swap! app-state update-in [:bars :own :x] dec))
-  (if (= true (get-in @input-state [:enemy :rightDown])) (swap! app-state update-in [:bars :enemy :x] inc))
-  (if (= true (get-in @input-state [:enemy :leftDown])) (swap! app-state update-in [:bars :enemy :x] dec)))
+  (let [bar (bar-location "own")]
+    (if (and (< (.-right bar) js/window.innerWidth) (= true (get-in @input-state [:own :rightDown])))
+      (swap! app-state update-in [:bars :own :x] inc))
+    (if (and (> (.-left bar) 0) (= true (get-in @input-state [:own :leftDown])))
+      (swap! app-state update-in [:bars :own :x] dec)))
+  (let [bar (bar-location "enemy")]
+    (if (and (< (.-right bar) js/window.innerWidth) (= true (get-in @input-state [:enemy :rightDown])))
+      (swap! app-state update-in [:bars :enemy :x] inc))
+    (if (and (> (.-left bar) 0) (= true (get-in @input-state [:enemy :leftDown]))) 
+      (swap! app-state update-in [:bars :enemy :x] dec))))
 
 (defn increase-ball-speed! [] 
   (let [y (get-in @app-state [:ball :step :y])
         x (get-in @app-state [:ball :step :y])]
     (if (and (< y 7) (> y -7))
          (swap! app-state update-in [:ball :step :y] #(if (< % 0) (dec %) (inc %))))
-    (if (and (< x 7) (> x -7) (not x 0))
+    (if (and (< x 7) (> x -7) (not= x 0))
       (swap! app-state update-in [:ball :step :x] #(if (< % 0) (dec %) (inc %))))))
   
 (defn add-momentum! [f] 
