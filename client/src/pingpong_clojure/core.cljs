@@ -117,7 +117,7 @@
           (js/clearInterval (:polling-id @state*)))))))
 
 (defn start-game-loop []   
-  (swap! state* assoc :polling-id (js/setInterval handler 30)))
+  (swap! state* assoc :polling-id (js/setInterval handler 20)))
 
 (defn bar-own [] [:div {:id "own" :style {:left (str (get-in @app-state [:bars :own :x]) "%")}}])
 
@@ -182,7 +182,6 @@
               "Start"]]]])))
 
 (r/render-component [game-ui app-state] (. js/document (getElementById "app")))
-(start-game-loop)
 
 (defn on-js-reload []
   (js/clearInterval (:polling-id @state*))
