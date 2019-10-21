@@ -9,9 +9,9 @@
 
 (def game-state (atom 
                  {:game {:state :running}
-                  :playerOne {:x 30 :height 3 :y 2 :bar-width 10 :input {:leftDown false :rightDown false}}
-                  :playerTwo {:x 30 :height 3 :y 98 :bar-width 10 :input {:leftDown false :rightDown false}}
-                  :ball {:diameter 5 :position {:x 50 :y 50} :step {:x 1 :y 1}}}))
+                  :playerOne {:x 30 :height 3 :y 2 :width 20 :input {:leftDown false :rightDown false}}
+                  :playerTwo {:x 30 :height 3 :y 98 :width 20 :input {:leftDown false :rightDown false}}
+                  :ball {:radius 2 :position {:x 50 :y 50} :step {:x 0 :y 1}}}))
 
 (defn move-ball! []
   (swap! game-state update-in [:ball :position :x] + (get-in @game-state [:ball :step :x]))
@@ -20,15 +20,15 @@
 (defn game-over? [] false)
 
 (defn collide? [ball target] (let
-                               [bar (target @game-state)
-                                ballLeft (:x (:position ball))
-                                ballRight (+ (:x (:position ball)) (:diameter ball))
-                                ballTop (+ (:y (:position ball)) (:diameter ball))
-                                ballBottom (:x (:position ball))
-                                barLeft (:x bar)
-                                barRight (+ (:x bar) (:bar-width bar))
-                                barTop (:y bar)
-                                barBottom (+ (:y bar) (:height bar))]
+                              [bar (target @game-state)
+                               ballLeft (:x (:position ball))
+                               ballRight (+ (:x (:position ball)) (:radius ball))
+                               ballTop (:y (:position ball))
+                               ballBottom (+ (:y (:position ball)) (:radius ball))
+                               barLeft (:x bar)
+                               barRight (+ (:x bar) (:width bar))
+                               barTop (:y bar)
+                               barBottom (+ (:y bar) (:height bar))]
                                (not
                                 (or
                                  (< ballRight barLeft)
@@ -90,13 +90,14 @@
             (do
               (println "HIT THE TOP/BOTTOM WALL")
               (revert-direction :y)))
-          (let [ball-position (get-in @game-state [:ball])]
-            (if (or (collide? ball-position :playerOne)
-                    (collide? ball-position :playerTwo))
+          (let [ball-position (get-in @game-state [:ball])
+                ball-steps (get-in @game-state [:ball :step])
+                y-direction (if (< (:y ball-steps) 0) :down :up)]
+            (if (or (and (= y-direction :down) (collide? ball-position :playerOne))
+                    (and (= y-direction :up) (collide? ball-position :playerTwo)))
               (do
                 (println "COLLIDE")
-                (revert-direction :y)
-                (increase-ball-speed!))))
+                (revert-direction :y))))
           (send-changes-to-clients game))))))
 
 (def my-pool (mk-pool))

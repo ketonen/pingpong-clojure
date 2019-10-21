@@ -41,17 +41,6 @@
 (.addEventListener js/window "keydown" keydown-listener)
 (.addEventListener js/window "keyup" keyup-listener)
 
-(defn bar-own [] [:div {:id "own" :style {:left (str (get-in @app-state [:playerOne :x]) "%")}}])
-
-(defn bar-enemy [] [:div {:id "enemy" :style {:left (str (get-in @app-state [:playerTwo :x]) "%")}}])
-
-(defn ball [] [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
-               [:circle {:style {:fill "black"}
-                         :id "ball"
-                         :cx (str (get-in @app-state [:ball :position :x]) "px")
-                         :cy (str (get-in @app-state [:ball :position :y]) "px")
-                         :r "20"}]])
-
 (defn bar-location [id] (-> (. js/document (getElementById id))
                           r/dom-node
                           .getBoundingClientRect))
@@ -63,15 +52,17 @@
 (defn game-ui [state]
   (let [state (get-in @app-state [:game :state])]
     (cond (= state "running")
-      [:div
-       [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
-        [:circle {:style {:fill "black"}
-                  :id "ball"
-                  :cx (str (* js/window.innerWidth (/ (get-in @app-state [:ball :position :x]) 100)) "px")
-                  :cy (str (* js/window.innerHeight (/ (get-in @app-state [:ball :position :y]) 100)) "px")
-                  :r "20"}]]
-       [:div {:id "enemy" :style {:left (str (get-in @app-state [:playerTwo :x]) "%")}}]
-       [:div {:id "own" :style {:left (str (get-in @app-state [:playerOne :x]) "%")}}]]
+          [:div
+           [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
+            [:circle {:style {:fill "black"}
+                      :id "ball"
+                      :cx (str (* js/window.innerWidth (/ (get-in @app-state [:ball :position :x]) 100)) "px")
+                      :cy (str (* js/window.innerHeight (/ (get-in @app-state [:ball :position :y]) 100)) "px")
+                      :r (str (get-in @app-state [:ball :radius]) "%")}]]
+           [:div {:id "enemy" :style {:max-width (str (get-in @app-state [:playerTwo :width]) "%")
+                                      :left (str (get-in @app-state [:playerTwo :x]) "%")}}]
+           [:div {:id "own" :style {:max-width (str (get-in @app-state [:playerTwo :width]) "%")
+                                    :left (str (get-in @app-state [:playerOne :x]) "%")}}]]
           :else
           [:div {:class "modal-dialog" :role "document"}
            [:div {:class "modal-content"}
