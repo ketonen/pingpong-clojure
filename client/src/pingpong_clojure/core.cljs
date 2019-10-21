@@ -60,9 +60,11 @@
                       :cy (str (* js/window.innerHeight (/ (get-in @app-state [:ball :position :y]) 100)) "px")
                       :r (str (get-in @app-state [:ball :radius]) "%")}]]
            [:div {:id "enemy" :style {:max-width (str (get-in @app-state [:playerTwo :width]) "%")
-                                      :left (str (get-in @app-state [:playerTwo :x]) "%")}}]
-           [:div {:id "own" :style {:max-width (str (get-in @app-state [:playerTwo :width]) "%")
-                                    :left (str (get-in @app-state [:playerOne :x]) "%")}}]]
+                                      :left (str (get-in @app-state [:playerTwo :x]) "%")
+                                      :background-color (get-in @app-state [:playerTwo :color])}}]
+           [:div {:id "own" :style {:max-width (str (get-in @app-state [:playerOne :width]) "%")
+                                    :left (str (get-in @app-state [:playerOne :x]) "%")
+                                    :background-color (get-in @app-state [:playerOne :color])}}]]
           :else
           [:div {:class "modal-dialog" :role "document"}
            [:div {:class "modal-content"}

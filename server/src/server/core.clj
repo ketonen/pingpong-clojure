@@ -7,10 +7,10 @@
 
 (def games (atom ()))
 
-(def game-state (atom 
+(def game-state (atom
                  {:game {:state :running}
-                  :playerOne {:x 30 :height 3 :y 2 :width 20 :input {:leftDown false :rightDown false}}
-                  :playerTwo {:x 30 :height 3 :y 98 :width 20 :input {:leftDown false :rightDown false}}
+                  :playerOne {:x 30 :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown false}}
+                  :playerTwo {:x 30 :height 3 :y 2 :width 20 :color "red" :input {:leftDown false :rightDown false}}
                   :ball {:radius 2 :position {:x 50 :y 50} :step {:x 0 :y 1}}}))
 
 (defn move-ball! []
@@ -19,22 +19,30 @@
 
 (defn game-over? [] false)
 
-(defn collide? [ball target] (let
-                              [bar (target @game-state)
-                               ballLeft (:x (:position ball))
-                               ballRight (+ (:x (:position ball)) (:radius ball))
-                               ballTop (:y (:position ball))
-                               ballBottom (+ (:y (:position ball)) (:radius ball))
-                               barLeft (:x bar)
-                               barRight (+ (:x bar) (:width bar))
-                               barTop (:y bar)
-                               barBottom (+ (:y bar) (:height bar))]
-                               (not
-                                (or
-                                 (< ballRight barLeft)
-                                 (> ballLeft barRight)
-                                 (< ballBottom barTop)
-                                 (> ballTop barBottom)))))
+(defn collide-bar? [ball bar] (let [barLeft (:x bar)
+                                    barRight (+ (:x bar) (:width bar))
+                                    barTop (:y bar)
+                                    barBottom (+ (:y bar) (:height bar))
+                                    ballLeft (:x (:position ball))
+                                    ballRight (+ (:x (:position ball)) (:radius ball))
+                                    ballTop (:y (:position ball))
+                                    ballBottom (+ (:y (:position ball)) (:radius ball))]
+                                (not
+                                 (or
+                                  (< ballRight barLeft)
+                                  (> ballLeft barRight)
+                                  (< ballBottom barTop)
+                                  (> ballTop barBottom)))))
+
+(defn collide? [game-state] (let
+                             [ball (:ball game-state)
+                              barPlayerOne (:playerOne game-state)
+                              barPlayerTwo (:playerTwo game-state)
+                              ball-steps (get-in game-state [:ball :step])
+                              y-direction (if (> (:y ball-steps) 0) :down :up)]
+                              (cond
+                                (and (= y-direction :down) (collide-bar? ball barPlayerOne)) :playerOne
+                                (and (= y-direction :up) (collide-bar? ball barPlayerTwo)) :playerTwo)))
 
 (defn revert-direction [k] (swap! game-state update-in [:ball :step k] -))
 
@@ -59,9 +67,9 @@
                                      (and
                                       (= y-direction :down)
                                       (>= 0 (get-in @game-state [:ball :position :y]))))))
-(ball-top-or-bottom-wall?)
 
-(defn increase-ball-speed! [] (swap! game-state update-in [:ball :step :x] inc))
+(defn increase-ball-speed! [] ())
+(defn decrease-ball-speed! [] (swap! game-state update-in [:ball :step :x] dec))
 (defn send-changes-to-clients [channel] (send! channel (json-str @game-state)))
 (defn add-channel-to-game [channel] (swap! games conj channel))
 (defn move-bars! [] (do
@@ -73,7 +81,11 @@
                         (swap! game-state update-in [:playerTwo :x] inc))
                       (if (get-in @game-state [:playerTwo :input :leftDown])
                         (swap! game-state update-in [:playerTwo :x] dec))))
-(defn add-momentum! [] ())
+
+(defn add-momentum! [f]
+  (cond
+    (= (get-in @game-state [:ball :step :x]) 0) (swap! game-state assoc-in [:ball :step :x] (f 0.5))
+    :else (swap! game-state update-in [:ball :step :x] * 0.5)))
 
 (defn game-loop []
   (doseq [game @games]
@@ -90,20 +102,22 @@
             (do
               (println "HIT THE TOP/BOTTOM WALL")
               (revert-direction :y)))
-          (let [ball-position (get-in @game-state [:ball])
-                ball-steps (get-in @game-state [:ball :step])
-                y-direction (if (< (:y ball-steps) 0) :down :up)]
-            (if (or (and (= y-direction :down) (collide? ball-position :playerOne))
-                    (and (= y-direction :up) (collide? ball-position :playerTwo)))
-              (do
-                (println "COLLIDE")
-                (revert-direction :y))))
+          (if-let [collision (collide? @game-state)]
+            (do
+              (if (>= (get-in @game-state [:ball :step :x]) 0)
+                (cond
+                  (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! inc)
+                  (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! dec)))
+              (if (<= (get-in @game-state [:ball :step :x]) 0)
+                (cond
+                  (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! dec)
+                  (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! inc)))
+              (revert-direction :y)))
           (send-changes-to-clients game))))))
 
 (def my-pool (mk-pool))
 
-(defn start-game [] 
-  (every 30 game-loop my-pool))
+(defn start-game [] (every 30 game-loop my-pool))
 
 (defn handler [request]
   (with-channel request channel
@@ -123,8 +137,7 @@
                                 (= command "own-right-up") (swap! game-state assoc-in [:playerOne :input :rightDown] false)
                                 (= command "own-left-up") (swap! game-state assoc-in [:playerOne :input :leftDown] false)
                                 (= command "enemy-right-up") (swap! game-state assoc-in [:playerTwo :input :rightDown] false)
-                                (= command "enemy-left-up") (swap! game-state assoc-in [:playerTwo :input :leftDown] false)))
-                            (println @game-state))))))
+                                (= command "enemy-left-up") (swap! game-state assoc-in [:playerTwo :input :leftDown] false))))))))
 
 (start-game)
 (run-server handler {:port 9090})
