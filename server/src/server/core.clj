@@ -46,8 +46,6 @@
 
 (defn revert-direction [k] (swap! game-state update-in [:ball :step k] -))
 
-(revert-direction :y)
-
 (defn ball-hit-side-wall? [] (let [ball-steps (get-in @game-state [:ball :step])
                                    x-direction (if (< (:x ball-steps) 0) :down :up)]
                                (or
@@ -68,7 +66,16 @@
                                       (= y-direction :down)
                                       (>= 0 (get-in @game-state [:ball :position :y]))))))
 
-(defn increase-ball-speed! [] ())
+(defn increase-ball-speed! []
+  (if (< (get-in @game-state [:ball :step :x]) 2.5)
+    (cond
+      (< (get-in @game-state [:ball :step :x]) 0) (swap! game-state update-in [:ball :step :x] - 0.1)
+      (> (get-in @game-state [:ball :step :x]) 0) (swap! game-state update-in [:ball :step :x] + 0.1)))
+  (if (< (get-in @game-state [:ball :step :y]) 2.5)
+    (cond
+      (< (get-in @game-state [:ball :step :y]) 0) (swap! game-state update-in [:ball :step :y] - 0.1)
+      (> (get-in @game-state [:ball :step :y]) 0) (swap! game-state update-in [:ball :step :y] + 0.1))))
+
 (defn decrease-ball-speed! [] (swap! game-state update-in [:ball :step :x] dec))
 (defn send-changes-to-clients [channel] (send! channel (json-str @game-state)))
 (defn add-channel-to-game [channel] (swap! games conj channel))
@@ -112,7 +119,8 @@
                 (cond
                   (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! -)
                   (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! +)))
-              (revert-direction :y)))
+              (revert-direction :y)
+              (increase-ball-speed!)))
           (send-changes-to-clients game))))))
 
 (def my-pool (mk-pool))
