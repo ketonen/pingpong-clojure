@@ -84,8 +84,8 @@
 
 (defn add-momentum! [f]
   (cond
-    (= (get-in @game-state [:ball :step :x]) 0) (swap! game-state assoc-in [:ball :step :x] (f 0.5))
-    :else (swap! game-state update-in [:ball :step :x] * 0.5)))
+    (= (get-in @game-state [:ball :step :x]) 0) (swap! game-state assoc-in [:ball :step :x] (f 0.2))
+    :else (swap! game-state update-in [:ball :step :x] f 0.2)))
 
 (defn game-loop []
   (doseq [game @games]
@@ -106,12 +106,12 @@
             (do
               (if (>= (get-in @game-state [:ball :step :x]) 0)
                 (cond
-                  (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! inc)
-                  (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! dec)))
+                  (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! +)
+                  (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! -)))
               (if (<= (get-in @game-state [:ball :step :x]) 0)
                 (cond
-                  (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! dec)
-                  (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! inc)))
+                  (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! -)
+                  (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! +)))
               (revert-direction :y)))
           (send-changes-to-clients game))))))
 
@@ -142,7 +142,4 @@
 (start-game)
 (run-server handler {:port 9090})
 
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
-  (println "Hello, World!"))
+(defn -main [& args] (println "SERVER STARTED"))
