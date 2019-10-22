@@ -6,18 +6,20 @@
 
 
 (def games (atom ()))
+(def initial-game-state {:game {:state :running}
+                         :playerOne {:x 30 :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown false}}
+                         :playerTwo {:x 30 :height 3 :y 2 :width 20 :color "red" :input {:leftDown false :rightDown false}}
+                         :ball {:radius 2 :position {:x 50 :y 50} :step {:x 0 :y 1}}})
 
-(def game-state (atom
-                 {:game {:state :running}
-                  :playerOne {:x 30 :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown false}}
-                  :playerTwo {:x 30 :height 3 :y 2 :width 20 :color "red" :input {:leftDown false :rightDown false}}
-                  :ball {:radius 2 :position {:x 50 :y 50} :step {:x 0 :y 1}}}))
+(def game-state (atom initial-game-state))
 
 (defn move-ball! []
   (swap! game-state update-in [:ball :position :x] + (get-in @game-state [:ball :step :x]))
   (swap! game-state update-in [:ball :position :y] + (get-in @game-state [:ball :step :y])))
 
-(defn game-over? [] false)
+(defn game-over? [ball] (let [ballTop (:y (:position ball))
+                              ballBottom (+ (:y (:position ball)) (:radius ball))]
+                          (or (<= ballTop 0) (>= ballBottom 100))))
 
 (defn collide-bar? [ball bar] (let [barLeft (:x bar)
                                     barRight (+ (:x bar) (:width bar))
@@ -56,16 +58,6 @@
                                  (= x-direction :up)
                                  (<= 100 (get-in @game-state [:ball :position :x]))))))
 
-(defn ball-top-or-bottom-wall? [] (let [ball-steps (get-in @game-state [:ball :step])
-                                        y-direction (if (< (:y ball-steps) 0) :down :up)]
-                                    (or
-                                     (and
-                                      (= y-direction :up)
-                                      (<= 100 (get-in @game-state [:ball :position :y])))
-                                     (and
-                                      (= y-direction :down)
-                                      (>= 0 (get-in @game-state [:ball :position :y]))))))
-
 (defn increase-ball-speed! []
   (if (< (get-in @game-state [:ball :step :x]) 2.5)
     (cond
@@ -97,7 +89,12 @@
 (defn game-loop []
   (doseq [game @games]
     (do
-      (if-not (game-over?)
+      (cond
+        (game-over? (:ball @game-state))
+        (do
+          (swap! game-state update-in [:game :state] :game-over)
+          (send-changes-to-clients game))
+        :else
         (do
           (move-ball!)
           (move-bars!)
@@ -105,10 +102,6 @@
             (do
               (println "HIT THE SIDE WALL")
               (revert-direction :x)))
-          (if (ball-top-or-bottom-wall?)
-            (do
-              (println "HIT THE TOP/BOTTOM WALL")
-              (revert-direction :y)))
           (if-let [collision (collide? @game-state)]
             (do
               (if (>= (get-in @game-state [:ball :step :x]) 0)
@@ -136,8 +129,13 @@
                             (do
                               (println command)
                               (cond
-                                (= command "start") (add-channel-to-game channel)
-                                (= command "stop") ("STOPPING...")
+                                (= command "start") (do
+                                                      (stop-and-reset-pool! my-pool)
+                                                      (reset! game-state initial-game-state)
+                                                      (add-channel-to-game channel)
+                                                      (start-game))
+                                (= command "stop") (do (println "STOPPING...")
+                                                       (stop-and-reset-pool! my-pool))
                                 (= command "own-right-down") (swap! game-state assoc-in [:playerOne :input :rightDown] true)
                                 (= command "own-left-down") (swap! game-state assoc-in [:playerOne :input :leftDown] true)
                                 (= command "enemy-right-down") (swap! game-state assoc-in [:playerTwo :input :rightDown] true)
@@ -147,7 +145,6 @@
                                 (= command "enemy-right-up") (swap! game-state assoc-in [:playerTwo :input :rightDown] false)
                                 (= command "enemy-left-up") (swap! game-state assoc-in [:playerTwo :input :leftDown] false))))))))
 
-(start-game)
 (run-server handler {:port 9090})
 
 (defn -main [& args] (println "SERVER STARTED"))

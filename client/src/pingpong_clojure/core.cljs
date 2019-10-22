@@ -10,10 +10,7 @@
 (def conn
   (js/WebSocket. "ws://127.0.0.1:9090"))
 
-(defn send-to-server [msg]
-    (do 
-      (println "SENDING TO SERVER:" msg)
-      (.send conn (.stringify js/JSON (js-obj "command" msg)))))
+(defn send-to-server [msg] (.send conn (.stringify js/JSON (js-obj "command" msg))))
 
 (set! (.-onopen conn) (fn [e] (println "CONNECTION ESTABLISHED")))
 
@@ -51,30 +48,29 @@
 
 (defn game-ui [state]
   (let [state (get-in @app-state [:game :state])]
-    (cond (= state "running")
-          [:div
-           [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
-            [:circle {:style {:fill "black"}
-                      :id "ball"
-                      :cx (str (* js/window.innerWidth (/ (get-in @app-state [:ball :position :x]) 100)) "px")
-                      :cy (str (* js/window.innerHeight (/ (get-in @app-state [:ball :position :y]) 100)) "px")
-                      :r (str (get-in @app-state [:ball :radius]) "%")}]]
-           [:div {:id "enemy" :style {:max-width (str (get-in @app-state [:playerTwo :width]) "%")
-                                      :left (str (get-in @app-state [:playerTwo :x]) "%")
-                                      :background-color (get-in @app-state [:playerTwo :color])}}]
-           [:div {:id "own" :style {:max-width (str (get-in @app-state [:playerOne :width]) "%")
-                                    :left (str (get-in @app-state [:playerOne :x]) "%")
-                                    :background-color (get-in @app-state [:playerOne :color])}}]]
-          :else
-          [:div {:class "modal-dialog" :role "document"}
-           [:div {:class "modal-content"}
-            [:div {:class "modal-header"}
-             [:h5 {:class "modal-title"} "Lets play a game"]]
-            [:div {:class "modal-body"} @app-state]
-            [:div {:class "modal-footer"}
-             [:button {:type "button" :class "btn btn-primary"
-                       :on-click #(send-to-server "start")}
-              "Start"]]]])))
+    (cond
+      (= state "running") [:div
+                           [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
+                            [:circle {:style {:fill "black"}
+                                      :id "ball"
+                                      :cx (str (* js/window.innerWidth (/ (get-in @app-state [:ball :position :x]) 100)) "px")
+                                      :cy (str (* js/window.innerHeight (/ (get-in @app-state [:ball :position :y]) 100)) "px")
+                                      :r (str (get-in @app-state [:ball :radius]) "%")}]]
+                           [:div {:id "enemy" :style {:max-width (str (get-in @app-state [:playerTwo :width]) "%")
+                                                      :left (str (get-in @app-state [:playerTwo :x]) "%")
+                                                      :background-color (get-in @app-state [:playerTwo :color])}}]
+                           [:div {:id "own" :style {:max-width (str (get-in @app-state [:playerOne :width]) "%")
+                                                    :left (str (get-in @app-state [:playerOne :x]) "%")
+                                                    :background-color (get-in @app-state [:playerOne :color])}}]]
+      :else [:div {:class "modal-dialog" :role "document"}
+             [:div {:class "modal-content"}
+              [:div {:class "modal-header"}
+               [:h5 {:class "modal-title"} "Lets play a game"]]
+              [:div {:class "modal-body"}]
+              [:div {:class "modal-footer"}
+               [:button {:type "button" :class "btn btn-primary"
+                         :on-click #(send-to-server "start")}
+                "Start"]]]])))
 
 (r/render-component [game-ui app-state] (. js/document (getElementById "app")))
 
