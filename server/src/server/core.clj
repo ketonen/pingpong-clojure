@@ -5,7 +5,8 @@
         [clojure.data.json :only [json-str read-json]]))
 
 
-(def games (atom ()))
+(def games (atom []))
+
 (def initial-game-state {:game {:state :running}
                          :playerOne {:x 30 :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown false}}
                          :playerTwo {:x 30 :height 3 :y 2 :width 20 :color "red" :input {:leftDown false :rightDown false}}
@@ -70,16 +71,12 @@
 
 (defn decrease-ball-speed! [] (swap! game-state update-in [:ball :step :x] dec))
 (defn send-changes-to-clients [channel] (send! channel (json-str @game-state)))
-(defn add-channel-to-game [channel] (swap! games conj channel))
-(defn move-bars! [] (do
-                      (if (get-in @game-state [:playerOne :input :rightDown])
-                        (swap! game-state update-in [:playerOne :x] inc))
-                      (if (get-in @game-state [:playerOne :input :leftDown])
-                        (swap! game-state update-in [:playerOne :x] dec))
-                      (if (get-in @game-state [:playerTwo :input :rightDown])
-                        (swap! game-state update-in [:playerTwo :x] inc))
-                      (if (get-in @game-state [:playerTwo :input :leftDown])
-                        (swap! game-state update-in [:playerTwo :x] dec))))
+(defn add-channel-to-game [channel playerName] (swap! games conj {:playerOne {:channel channel :name playerName}}))
+(defn move-bar! [k] (do (if (and (< (+ (get-in @game-state [k :width]) (get-in @game-state [k :x])) 100) (get-in @game-state [k :input :rightDown]))
+                        (swap! game-state update-in [k :x] inc))
+                      (if (and (> (get-in @game-state [k :x]) 0) (get-in @game-state [k :input :leftDown]))
+                        (swap! game-state update-in [k :x] dec))))
+(defn move-bars! [] (move-bar! :playerOne) (move-bar! :playerTwo))
 
 (defn add-momentum! [f]
   (cond
@@ -88,33 +85,32 @@
 
 (defn game-loop []
   (doseq [game @games]
-    (do
-      (cond
-        (game-over? (:ball @game-state))
-        (do
-          (swap! game-state update-in [:game :state] :game-over)
-          (send-changes-to-clients game))
-        :else
-        (do
-          (move-ball!)
-          (move-bars!)
-          (if (ball-hit-side-wall?)
-            (do
-              (println "HIT THE SIDE WALL")
-              (revert-direction :x)))
-          (if-let [collision (collide? @game-state)]
-            (do
-              (if (>= (get-in @game-state [:ball :step :x]) 0)
-                (cond
-                  (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! +)
-                  (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! -)))
-              (if (<= (get-in @game-state [:ball :step :x]) 0)
-                (cond
-                  (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! -)
-                  (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! +)))
-              (revert-direction :y)
-              (increase-ball-speed!)))
-          (send-changes-to-clients game))))))
+    (cond
+      (game-over? (:ball @game-state))
+      (do
+        (swap! game-state update-in [:game :state] :game-over)
+        (send-changes-to-clients (-> game :playerOne :channel)))
+      :else
+      (do
+        (move-ball!)
+        (move-bars!)
+        (if (ball-hit-side-wall?)
+          (do
+            (println "HIT THE SIDE WALL")
+            (revert-direction :x)))
+        (if-let [collision (collide? @game-state)]
+          (do
+            (if (>= (get-in @game-state [:ball :step :x]) 0)
+              (cond
+                (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! +)
+                (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! -)))
+            (if (<= (get-in @game-state [:ball :step :x]) 0)
+              (cond
+                (= true (get-in @game-state [collision :input :leftDown])) (add-momentum! -)
+                (= true (get-in @game-state [collision :input :rightDown])) (add-momentum! +)))
+            (revert-direction :y)
+            (increase-ball-speed!)))
+        (send-changes-to-clients (-> game :playerOne :channel))))))
 
 (def my-pool (mk-pool))
 
@@ -126,25 +122,25 @@
     (on-receive channel (fn [msg]
                           (let [data (read-json msg)
                                 command (:command data)]
-                            (do
-                              (println command)
-                              (cond
-                                (= command "start") (do
-                                                      (stop-and-reset-pool! my-pool)
-                                                      (reset! game-state initial-game-state)
-                                                      (add-channel-to-game channel)
-                                                      (start-game))
-                                (= command "stop") (do (println "STOPPING...")
-                                                       (stop-and-reset-pool! my-pool))
-                                (= command "own-right-down") (swap! game-state assoc-in [:playerOne :input :rightDown] true)
-                                (= command "own-left-down") (swap! game-state assoc-in [:playerOne :input :leftDown] true)
-                                (= command "enemy-right-down") (swap! game-state assoc-in [:playerTwo :input :rightDown] true)
-                                (= command "enemy-left-down") (swap! game-state assoc-in [:playerTwo :input :leftDown] true)
-                                (= command "own-right-up") (swap! game-state assoc-in [:playerOne :input :rightDown] false)
-                                (= command "own-left-up") (swap! game-state assoc-in [:playerOne :input :leftDown] false)
-                                (= command "enemy-right-up") (swap! game-state assoc-in [:playerTwo :input :rightDown] false)
-                                (= command "enemy-left-up") (swap! game-state assoc-in [:playerTwo :input :leftDown] false))))))))
+                            (cond
+                              (= command "start-local") (do
+                                                          (println "STARGTING GAME")
+                                                          (stop-and-reset-pool! my-pool)
+                                                          (reset! game-state initial-game-state)
+                                                          (add-channel-to-game channel "KEIJO")
+                                                          (start-game))
+                              (= command "stop") (do (println "STOPPING...")
+                                                     (stop-and-reset-pool! my-pool))
+                              (= command "own-right-down") (swap! game-state assoc-in [:playerOne :input :rightDown] true)
+                              (= command "own-left-down") (swap! game-state assoc-in [:playerOne :input :leftDown] true)
+                              (= command "enemy-right-down") (swap! game-state assoc-in [:playerTwo :input :rightDown] true)
+                              (= command "enemy-left-down") (swap! game-state assoc-in [:playerTwo :input :leftDown] true)
+                              (= command "own-right-up") (swap! game-state assoc-in [:playerOne :input :rightDown] false)
+                              (= command "own-left-up") (swap! game-state assoc-in [:playerOne :input :leftDown] false)
+                              (= command "enemy-right-up") (swap! game-state assoc-in [:playerTwo :input :rightDown] false)
+                              (= command "enemy-left-up") (swap! game-state assoc-in [:playerTwo :input :leftDown] false)))))))
 
-(run-server handler {:port 9090})
 
-(defn -main [& args] (println "SERVER STARTED"))
+(defn -main [& args] 
+  (run-server handler {:port 9090})
+  (println "SERVER STARTED"))

@@ -69,7 +69,7 @@
               [:div {:class "modal-body"}]
               [:div {:class "modal-footer"}
                [:button {:type "button" :class "btn btn-primary"
-                         :on-click #(send-to-server "start")}
+                         :on-click #(send-to-server "start-local")}
                 "Start"]]]])))
 
 (r/render-component [game-ui app-state] (. js/document (getElementById "app")))
