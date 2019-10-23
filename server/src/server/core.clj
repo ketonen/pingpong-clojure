@@ -1,7 +1,10 @@
 (ns server.core
   (:gen-class)
-  (:use org.httpkit.server)
-  (:use [overtone.at-at]
+  (:require [compojure.core :refer :all]
+            [compojure.route :as route]
+            [cheshire.core :refer :all])
+  (:use [org.httpkit.server]
+        [overtone.at-at]
         [clojure.data.json :only [json-str read-json]]))
 
 
@@ -140,7 +143,13 @@
                               (= command "enemy-right-up") (swap! game-state assoc-in [:playerTwo :input :rightDown] false)
                               (= command "enemy-left-up") (swap! game-state assoc-in [:playerTwo :input :leftDown] false)))))))
 
+(defroutes all-routes
+  (GET "/" [] {:status 200
+               :headers {"Content-Type" "application/json; charset=utf-8"
+                         "Access-Control-Allow-Origin" "*"}
+               :body (generate-string {:foo "bar" :baz {:eggplant [1 2 3]}} {:pretty true :escape-non-ascii true})})
+  (GET "/ws" [] handler))
 
 (defn -main [& args] 
-  (run-server handler {:port 9090})
+  (run-server all-routes {:port 9090})
   (println "SERVER STARTED"))

@@ -7,7 +7,8 @@
                  [http-kit "2.3.0"]
                  [silasdavis/at-at "1.2.0"]
                  [org.clojure/data.json "0.1.2"]
-                 [compojure "1.6.1"]]
+                 [compojure "1.6.1"]
+                 [cheshire "5.9.0"]]
   :main ^:skip-aot server.core
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
