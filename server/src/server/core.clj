@@ -75,8 +75,13 @@
 (defn decrease-ball-speed! [] (swap! game-state update-in [:ball :step :x] dec))
 (defn send-changes-to-clients [channel] (send! channel (json-str @game-state)))
 (defn add-channel-to-game [channel playerName] (swap! games conj {:playerOne {:channel channel :name playerName}}))
+(defn remove-channel-from-games [channel] (reset! games (let [my-count channel]
+                                            (filter #(not= (or (:channel (:playerOne %)) my-count)
+                                                           (or (:channel (:playerTwo %)) my-count)) @games))))
+
+
 (defn move-bar! [k] (do (if (and (< (+ (get-in @game-state [k :width]) (get-in @game-state [k :x])) 100) (get-in @game-state [k :input :rightDown]))
-                        (swap! game-state update-in [k :x] inc))
+                          (swap! game-state update-in [k :x] inc))
                       (if (and (> (get-in @game-state [k :x]) 0) (get-in @game-state [k :input :leftDown]))
                         (swap! game-state update-in [k :x] dec))))
 (defn move-bars! [] (move-bar! :playerOne) (move-bar! :playerTwo))
@@ -121,7 +126,9 @@
 
 (defn handler [request]
   (with-channel request channel
-    (on-close channel (fn [status] (println "channel closed: " status)))
+    (on-close channel (fn [status] 
+                        (remove-channel-from-games channel)
+                        (println "channel closed: " status)))
     (on-receive channel (fn [msg]
                           (let [data (read-json msg)
                                 command (:command data)]
@@ -143,11 +150,16 @@
                               (= command "enemy-right-up") (swap! game-state assoc-in [:playerTwo :input :rightDown] false)
                               (= command "enemy-left-up") (swap! game-state assoc-in [:playerTwo :input :leftDown] false)))))))
 
+(defn get-awailable-games [] (vec (map #(select-keys % [:name])
+                                       (->> (filter (every-pred (comp nil? :playerTwo)) @games)
+                                            (map #(get-in % [:playerOne]))))))
+
+(get-awailable-games)
 (defroutes all-routes
   (GET "/" [] {:status 200
                :headers {"Content-Type" "application/json; charset=utf-8"
                          "Access-Control-Allow-Origin" "*"}
-               :body (generate-string {:foo "bar" :baz {:eggplant [1 2 3]}} {:pretty true :escape-non-ascii true})})
+               :body (generate-string (get-awailable-games) {:pretty true :escape-non-ascii true})})
   (GET "/ws" [] handler))
 
 (defn -main [& args] 

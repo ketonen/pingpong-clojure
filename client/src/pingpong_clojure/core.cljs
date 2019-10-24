@@ -4,12 +4,15 @@
             [cljs-http.client :as http]
             [cljs.core.async :refer [<!]]))
 
-(defonce app-state (atom {}))
+(def app-state (atom '(:no-games)))
 (defonce game-state (atom {}))
 
-(go (let [response (<! (http/get "http://127.0.0.1:9090" {:with-credentials? false}))]
-      (println (:body response))
-      (reset! app-state (:body response))))
+
+(defn get-awailable-games []
+  (go (let [response (<! (http/get "http://127.0.0.1:9090" {:with-credentials? false}))]
+        (cond
+          (not (empty? (:body response))) (reset! app-state (seq (:body response)))
+          :else (reset! app-state '(:no-games))))))
 
 (enable-console-print!)
 
@@ -54,32 +57,69 @@
                          .getBoundingClientRect))
 
 (defn game-ui [state]
-  (let [state (get-in @game-state [:game :state])]
+  (cond
+    (not (empty? @app-state))
     (cond
-      (= state "running") [:div
-                           [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
-                            [:circle {:style {:fill "black"}
-                                      :id "ball"
-                                      :cx (str (* js/window.innerWidth (/ (get-in @game-state [:ball :position :x]) 100)) "px")
-                                      :cy (str (* js/window.innerHeight (/ (get-in @game-state [:ball :position :y]) 100)) "px")
-                                      :r (str (get-in @game-state [:ball :radius]) "%")}]]
-                           [:div {:id "enemy" :style {:max-width (str (get-in @game-state [:playerTwo :width]) "%")
-                                                      :left (str (get-in @game-state [:playerTwo :x]) "%")
-                                                      :background-color (get-in @game-state [:playerTwo :color])}}]
-                           [:div {:id "own" :style {:max-width (str (get-in @game-state [:playerOne :width]) "%")
-                                                    :left (str (get-in @game-state [:playerOne :x]) "%")
-                                                    :background-color (get-in @game-state [:playerOne :color])}}]]
-      :else [:div {:class "modal-dialog" :role "document"}
-             [:div {:class "modal-content"}
-              [:div {:class "modal-header"}
-               [:h5 {:class "modal-title"} "Lets play a game"]]
-              [:div {:class "modal-body"} @app-state]
-              [:div {:class "modal-footer"}
-               [:button {:type "button" :class "btn btn-primary"
-                         :on-click #(send-to-server "start-local")}
-                "Start"]]]])))
+      (not= (first @app-state) :no-games)
+      [:div {:class "modal-dialog" :role "document"}
+       [:div {:class "modal-content"}
+        [:div {:class "modal-header"}
+         [:h5 {:class "modal-title"} "Choose game"]]
+        [:div {:class "modal-body"}
+         [:div {:class "list-group"}
+          (for [i @app-state]
+            ^{:key (str "tr-" i)}
+            [:a {:href "#" :class "list-group-item list-group-item-action"} (:name i)])]]
+        [:div {:class "modal-footer"}
+         [:button {:type "button" :class "btn btn-danger"
+                   :on-click #(reset! app-state ())}
+          "Cancel"]
+         [:button {:type "button" :class "btn btn-primary"
+                   :on-click #(send-to-server "start-online")}
+          "Start"]]]]
+      :else
+      [:div {:class "modal-dialog" :role "document"}
+       [:div {:class "modal-content"}
+        [:div {:class "modal-header"}
+         [:h5 {:class "modal-title"} "New game"]]
+        [:div {:class "modal-body"} "No awailable games at the moment. Create new game?"]
+        [:div {:class "modal-footer"}
+         [:button {:type "button" :class "btn btn-danger"
+                   :on-click #(reset! app-state ())}
+          "Cancel"]
+         [:button {:type "button" :class "btn btn-primary"
+                   :on-click #(send-to-server "start-online")}
+          "Create new game"]]]])
+    :else 
+    (let [state (get-in @game-state [:game :state])]
+      (cond
+        (= state "running") [:div
+                             [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
+                              [:circle {:style {:fill "black"}
+                                        :id "ball"
+                                        :cx (str (* js/window.innerWidth (/ (get-in @game-state [:ball :position :x]) 100)) "px")
+                                        :cy (str (* js/window.innerHeight (/ (get-in @game-state [:ball :position :y]) 100)) "px")
+                                        :r (str (get-in @game-state [:ball :radius]) "%")}]]
+                             [:div {:id "enemy" :style {:max-width (str (get-in @game-state [:playerTwo :width]) "%")
+                                                        :left (str (get-in @game-state [:playerTwo :x]) "%")
+                                                        :background-color (get-in @game-state [:playerTwo :color])}}]
+                             [:div {:id "own" :style {:max-width (str (get-in @game-state [:playerOne :width]) "%")
+                                                      :left (str (get-in @game-state [:playerOne :x]) "%")
+                                                      :background-color (get-in @game-state [:playerOne :color])}}]]
+        :else [:div {:class "modal-dialog" :role "document"}
+               [:div {:class "modal-content"}
+                [:div {:class "modal-header"}
+                 [:h5 {:class "modal-title"} "Lets play a game"]]
+                [:div {:class "modal-body"} @app-state]
+                [:div {:class "modal-footer"}
+                 [:button {:type "button" :class "btn btn-primary"
+                           :on-click #(send-to-server "start-local")}
+                  "Local game"]
+                 [:button {:type "button" :class "btn btn-primary"
+                           :on-click #(get-awailable-games)}
+                  "Online game"]]]]))))
 
-(r/render-component [game-ui game-state] (. js/document (getElementById "app")))
+(r/render-component [game-ui] (. js/document (getElementById "app")))
 
 (defn on-js-reload []
   ;; optionally touch your game-state to force rerendering depending on
