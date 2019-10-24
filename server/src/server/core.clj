@@ -151,7 +151,7 @@
                               (= command "enemy-left-up") (swap! game-state assoc-in [:playerTwo :input :leftDown] false)))))))
 
 (defn get-awailable-games [] (vec (map #(select-keys % [:name])
-                                       (->> (filter (every-pred (comp nil? :playerTwo)) @games)
+                                       (->> (filter (comp nil? :playerTwo) @games)
                                             (map #(get-in % [:playerOne]))))))
 
 (get-awailable-games)
