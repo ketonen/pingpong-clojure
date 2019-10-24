@@ -4,7 +4,7 @@
             [cljs-http.client :as http]
             [cljs.core.async :refer [<!]]))
 
-(def app-state (atom '(:no-games)))
+(def app-state (atom ()))
 (defonce game-state (atom {}))
 
 
