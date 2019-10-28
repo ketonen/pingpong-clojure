@@ -6,19 +6,29 @@
   (testing "FIXME, I fail."
     (is (= 0 1))))
 
-(deftest should-collide
-  (testing "Ball should collide with bar"
-    (is (= (collide?
-            {:game {:state :running}
-             :playerOne {:x 30, :height 3, :y 2, :width 20, :input {:leftDown false, :rightDown false}}
-             :playerTwo {:x 30, :height 3, :y 98, :width 20, :input {:leftDown false, :rightDown false}}
-             :ball {:radius 2, :position {:x 50, :y 5}, :step {:x 0, :y -1}}})
-           :playerTwo))))
+(deftest game-loop-tests
+  (let [playerOneX 30
+        playerTwoX 30
+        x {:playerOne {:channel "channel" :name "playerName"}
+           :game-state  {:game {:state :running}
+                         :playerOne {:x playerOneX :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown true}}
+                         :playerTwo {:x playerTwoX :height 3 :y 2 :width 20 :color "red" :input {:leftDown true :rightDown false}}
+                         :ball {:radius 2 :position {:x 50 :y 50} :step {:x 0 :y 1}}}}
+        n (game-loop x)]
+    (is (< playerOneX (:x (:playerOne (:game-state n)))))
+    (is (> playerTwoX (:x (:playerTwo (:game-state n)))))))
 
-(deftest should-collide-bar
-  (testing "DAA"
-    (is (= (collide-bar?
-            {:radius 2, :position {:x 50, :y 5}, :step {:x 0, :y -1}}
-            {:x 30, :height 3, :y 98, :width 20, :input {:leftDown false, :rightDown false}})
-           true))))
+(deftest check-momentum-tests
+  (let [game-state  {:game {:state :running}
+                     :playerOne {:x 30 :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown true}}
+                     :playerTwo {:x 30 :height 3 :y 2 :width 20 :color "red" :input {:leftDown true :rightDown false}}
+                     :ball {:radius 2 :position {:x 50 :y 50} :step {:x 0 :y 1}}}]
+    (is (< 0 (:x (:step (:ball (check-momentum :playerOne game-state))))))))
 
+(deftest move-ball-tests
+  (let [game-state  {:game {:state :running}
+                     :playerOne {:x 30 :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown true}}
+                     :playerTwo {:x 30 :height 3 :y 2 :width 20 :color "red" :input {:leftDown true :rightDown false}}
+                     :ball {:radius 2 :position {:x 50 :y 50} :step {:x 10 :y 10}}}]
+    (is (= 60 (:x (:position (:ball (move-ball! game-state))))))
+    (is (= 60 (:y (:position (:ball (move-ball! game-state))))))))

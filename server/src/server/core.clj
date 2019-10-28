@@ -5,6 +5,7 @@
             [cheshire.core :refer :all])
   (:use [org.httpkit.server]
         [overtone.at-at]
+        [potpuri.core]
         [clojure.data.json :only [json-str read-json]]))
 
 
@@ -16,8 +17,9 @@
                          :ball {:radius 2 :position {:x 50 :y 50} :step {:x 0 :y 1}}})
 
 (defn move-ball! [game-state]
-  (update-in game-state [:ball :position :x] + (get-in game-state [:ball :step :x]))
-  (update-in game-state [:ball :position :y] + (get-in game-state [:ball :step :y])))
+  (-> game-state
+      (update-in [:ball :position :x] + (get-in game-state [:ball :step :x]))
+      (update-in [:ball :position :y] + (get-in game-state [:ball :step :y]))))
 
 (defn game-over? [ball]
   (let [ballTop (:y (:position ball))
@@ -72,11 +74,12 @@
     game-state))
 
 (defn increase-ball-speed! [game-state]
+  ; (clojure.pprint/pprint (:ball game-state))
   (-> game-state 
       (increase-ball-axis :x)
       (increase-ball-axis :y)))
 
-(defn decrease-ball-speed! [game-state] (swap! game-state update-in [:ball :step :x] dec))
+(defn decrease-ball-speed! [game-state] (update-in game-state [:ball :step :x] dec))
 (defn send-changes-to-clients [game-state channel] 
   (send! channel (json-str game-state)))
 
@@ -89,19 +92,23 @@
                                                            (or (:channel (:playerTwo %)) my-count)) @games))))
 
 
-(defn move-bar! [game-state k] (cond
-                                 (and (< (+ (get-in game-state [k :width]) (get-in game-state [k :x])) 100) (get-in game-state [k :input :rightDown]))
-                                 (update-in game-state [k :x] inc)
-                                 (and (> (get-in game-state [k :x]) 0) (get-in game-state [k :input :leftDown]))
-                                 (update-in game-state [k :x] dec)
-                                 :else game-state))
+(defn move-bar! [game-state k]
+  (cond
+    (and (< (+ (get-in game-state [k :width]) (get-in game-state [k :x])) 100) (get-in game-state [k :input :rightDown]))
+    (update-in game-state [k :x] inc)
+    (and (> (get-in game-state [k :x]) 0) (get-in game-state [k :input :leftDown]))
+    (update-in game-state [k :x] dec)
+    :else game-state))
+
 (defn move-bars! [game-state] 
-  (move-bar! game-state :playerOne) (move-bar! game-state :playerTwo))
+  (-> game-state
+      (move-bar! :playerOne)
+      (move-bar! :playerTwo)))
 
 (defn add-momentum! [game-state f]
   (cond
-    (= (get-in game-state [:ball :step :x]) 0) (swap! game-state assoc-in [:ball :step :x] (f 0.2))
-    :else (swap! game-state update-in [:ball :step :x] f 0.2)))
+    (= (get-in game-state [:ball :step :x]) 0) (assoc-in game-state [:ball :step :x] (f 0.2))
+    :else (update-in game-state [:ball :step :x] f 0.2)))
 
 (defn check-momentum [collision game-state]
   (cond
@@ -119,7 +126,7 @@
 
 (defn generate-next-state [game-state]
   (cond
-    (game-over? (:ball game-state)) (game-state [:game :state] :game-over)
+    (game-over? (:ball game-state)) (assoc-in game-state [:game :state] :game-over)
     :else
     (-> game-state
         move-ball!
@@ -143,29 +150,36 @@
 (def game-loop-object (atom nil))
 (defn start-game []
   (every 30 #(let [g (doall (pmap game-loop @games))]
-                 (reset! games g)
-                 (apply
-                  (fn [x] (send-changes-to-clients (:game-state x) (-> x :playerOne :channel))) @games))
+               (reset! games g)
+               (apply
+                (fn [x] (send-changes-to-clients (:game-state x) (-> x :playerOne :channel))) @games))
          my-pool))
 
 (defn get-game-state [games channel]
-  (filter 
-   #(or (= (:channel (:playerOne %)) channel) (= (:channel (:playerTwo %)) channel)) 
-   games))
+  (first (filter
+          #(or (= (:channel (:playerOne %)) channel) (= (:channel (:playerTwo %)) channel))
+          games)))
 
 (defn get-awailable-games [] (vec (map #(select-keys % [:name])
                                        (->> (filter (comp nil? :playerTwo) @games)
                                          (map #(get-in % [:playerOne]))))))
 
+(defn update-game-state [channel d]
+  (let [x (map #(cond
+                  (or (= (:channel (:playerOne %)) channel) (= (:channel (:playerTwo %)) channel))
+                  d
+                  :else %) @games)]
+    (reset! games x)))
+
+
 (defn handler [request]
   (with-channel request channel
-    (on-close channel (fn [status] 
+    (on-close channel (fn [status]
                         (let [gs (get-game-state @games channel)]
-                          (do
-                            (println (and (not= gs nil) (= 1 (count @games))))
-                            (if (and (not= gs nil) (= 1 (count @games)))
-                              (stop @game-loop-object))
-                            (println "channel closed: " status)))))
+                          (println (and (not= gs nil) (= 1 (count @games))))
+                          (if (and (not= gs nil) (= 1 (count @games)))
+                            (stop @game-loop-object))
+                          (println "channel closed: " status))))
     (on-receive channel (fn [msg]
                           (let [data (read-json msg)
                                 command (:command data)]
@@ -178,15 +192,15 @@
                                                           (if (not= game-loop-object nil)
                                                             (reset! game-loop-object (start-game))))
                               (= command "stop") (do (println "STOPPING...")
-                                                     (stop-and-reset-pool! my-pool))
-                              (= command "own-right-down") (swap! (get-game-state @games channel) assoc-in [:playerOne :input :rightDown] true)
-                              (= command "own-left-down") (swap! (get-game-state @games channel) assoc-in [:playerOne :input :leftDown] true)
-                              (= command "enemy-right-down") (swap! (get-game-state @games channel) assoc-in [:playerTwo :input :rightDown] true)
-                              (= command "enemy-left-down") (swap! (get-game-state @games channel) assoc-in [:playerTwo :input :leftDown] true)
-                              (= command "own-right-up") (swap! (get-game-state @games channel) assoc-in [:playerOne :input :rightDown] false)
-                              (= command "own-left-up") (swap! (get-game-state @games channel) assoc-in [:playerOne :input :leftDown] false)
-                              (= command "enemy-right-up") (swap! (get-game-state @games channel) assoc-in [:playerTwo :input :rightDown] false)
-                              (= command "enemy-left-up") (swap! (get-game-state @games channel) assoc-in [:playerTwo :input :leftDown] false)))))))
+                                                   (stop-and-reset-pool! my-pool))
+                              (= command "own-right-down") (update-game-state channel (assoc-in (get-game-state @games channel) [:game-state :playerOne :input :rightDown] true))
+                              (= command "own-left-down") (update-game-state channel (assoc-in (get-game-state @games channel) [:game-state :playerOne :input :leftDown] true))
+                              (= command "enemy-right-down") (update-game-state channel (assoc-in (get-game-state @games channel) [:game-state :playerTwo :input :rightDown] true))
+                              (= command "enemy-left-down") (update-game-state channel (assoc-in (get-game-state @games channel) [:game-state :playerTwo :input :leftDown] true))
+                              (= command "own-right-up") (update-game-state channel (assoc-in (get-game-state @games channel) [:game-state :playerOne :input :rightDown] false))
+                              (= command "own-left-up") (update-game-state channel (assoc-in (get-game-state @games channel) [:game-state :playerOne :input :leftDown] false))
+                              (= command "enemy-right-up") (update-game-state channel (assoc-in (get-game-state @games channel) [:game-state :playerTwo :input :rightDown] false))
+                              (= command "enemy-left-up") (update-game-state channel (assoc-in (get-game-state @games channel) [:game-state :playerTwo :input :leftDown] false))))))))
 
 (defroutes all-routes
   (GET "/" [] {:status 200
