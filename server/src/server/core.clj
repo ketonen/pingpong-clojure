@@ -2,13 +2,18 @@
   (:require [compojure.core :refer :all]
             [compojure.route :as route]
             [cheshire.core :refer :all]
-            [server.logic :refer :all])
+            [server.logic :refer [game-loop initial-game-state]])
   (:use [org.httpkit.server]
         [overtone.at-at]
         [clojure.data.json :only [json-str read-json]]))
 
 
 (def games (atom []))
+
+(defn get-game-state [games channel]
+  (first (filter
+          #(or (= (:channel (:playerOne %)) channel) (= (:channel (:playerTwo %)) channel))
+          games)))
 
 (defn send-changes-to-clients [game-state channel]
   (send! channel (json-str game-state)))

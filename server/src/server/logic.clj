@@ -121,8 +121,3 @@
 (defn game-loop [game]
   (let [s (generate-next-state (:game-state game))]
     (assoc-in game [:game-state] s)))
-
-(defn get-game-state [games channel]
-  (first (filter
-          #(or (= (:channel (:playerOne %)) channel) (= (:channel (:playerTwo %)) channel))
-          games)))
