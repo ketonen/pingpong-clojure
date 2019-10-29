@@ -1,6 +1,5 @@
 (ns server.core
   (:require [compojure.core :refer :all]
-            [compojure.route :as route]
             [cheshire.core :refer :all]
             [server.logic :refer [game-loop initial-game-state]])
   (:use [org.httpkit.server]
@@ -54,7 +53,6 @@
   (with-channel request channel
     (on-close channel (fn [status]
                         (let [gs (get-game-state @games channel)]
-                          (println (and (not= gs nil) (= 1 (count @games))))
                           (if (and (not= gs nil) (= 1 (count @games)))
                             (stop @game-loop-object))
                           (remove-channel-from-games channel)
