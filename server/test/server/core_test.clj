@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [server.logic :refer :all]))
 
-(deftest game-loop-tests
+©(deftest game-loop-tests
   (let [playerOneX 30
         playerTwoX 30
         x {:playerOne {:channel "channel" :name "playerName"}

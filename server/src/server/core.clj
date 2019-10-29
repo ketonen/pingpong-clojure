@@ -26,9 +26,8 @@
 
 (defn remove-channel-from-games [channel] 
   (reset! games (let [my-count channel]
-                  (filter #(not= (or (:channel (:playerOne %)) my-count)
-                                 (or (:channel (:playerTwo %)) my-count)) @games))))
-
+                  (vec (filter #(not= (or (:channel (:playerOne %)) my-count)
+                                      (or (:channel (:playerTwo %)) my-count)) @games)))))
 
 (defn update-game-state [channel d]
   (let [x (map 
@@ -39,12 +38,12 @@
 (def my-pool (mk-pool))
 
 (defn start-game []
-  (every 30 #(let [g (doall (pmap game-loop @games))]
-               (reset! games g)
-               (apply
-                (fn [x] (send-changes-to-clients (:game-state x) (-> x :playerOne :channel))) @games))
+  (every 30 #(do
+               (doseq [x @games] (send-changes-to-clients (:game-state x) (-> x :playerOne :channel)))
+               (reset! games (filter (fn [g] not= :game-over (-> g :game-state :game :state)) @games))
+               (let [g (vec (doall (pmap game-loop @games)))]
+                 (reset! games g)))
          my-pool))
-
 
 (defn handler [request]
   (with-channel request channel
@@ -62,7 +61,8 @@
                                                           (println "STARTING GAME")
                                                           (stop-and-reset-pool! my-pool)
                                                           ; (reset! game-state initial-game-state)
-                                                          (add-channel-to-game channel "KEIJO")
+                                                          (remove-channel-from-games channel)
+                                                          (add-channel-to-game channel "MIKKO")
                                                           (if (not= game-loop-object nil)
                                                             (reset! game-loop-object (start-game))))
                               (= command "stop") (do (println "STOPPING...")
