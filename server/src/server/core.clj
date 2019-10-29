@@ -52,6 +52,7 @@
                           (println (and (not= gs nil) (= 1 (count @games))))
                           (if (and (not= gs nil) (= 1 (count @games)))
                             (stop @game-loop-object))
+                          (remove-channel-from-games channel)
                           (println "channel closed: " status))))
     (on-receive channel (fn [msg]
                           (let [data (read-json msg)
