@@ -56,6 +56,16 @@
                          r/dom-node
                          .getBoundingClientRect))
 
+(defn bar [id player] [:div {:id id :style {:max-width (str (:width player) "%")
+                                              :left (str (:x player) "%")
+                                              :background-color (:color player)}}])
+
+(defn ball [game-state] [:circle {:style {:fill "black"}
+                        :id "ball"
+                        :cx (str (* js/window.innerWidth (/ (get-in @game-state [:ball :position :x]) 100)) "px")
+                        :cy (str (* js/window.innerHeight (/ (get-in @game-state [:ball :position :y]) 100)) "px")
+                        :r (str (get-in @game-state [:ball :radius]) "%")}])
+
 (defn game-ui [state]
   (cond
     (not (empty? @app-state))
@@ -94,18 +104,11 @@
     (let [state (get-in @game-state [:game :state])]
       (cond
         (= state "running") [:div
+                             [:div (-> @game-state :bonuses count)]
                              [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
-                              [:circle {:style {:fill "black"}
-                                        :id "ball"
-                                        :cx (str (* js/window.innerWidth (/ (get-in @game-state [:ball :position :x]) 100)) "px")
-                                        :cy (str (* js/window.innerHeight (/ (get-in @game-state [:ball :position :y]) 100)) "px")
-                                        :r (str (get-in @game-state [:ball :radius]) "%")}]]
-                             [:div {:id "enemy" :style {:max-width (str (get-in @game-state [:playerTwo :width]) "%")
-                                                        :left (str (get-in @game-state [:playerTwo :x]) "%")
-                                                        :background-color (get-in @game-state [:playerTwo :color])}}]
-                             [:div {:id "own" :style {:max-width (str (get-in @game-state [:playerOne :width]) "%")
-                                                      :left (str (get-in @game-state [:playerOne :x]) "%")
-                                                      :background-color (get-in @game-state [:playerOne :color])}}]]
+                              [ball game-state]]
+                             [bar "enemy" (:playerTwo @game-state)]
+                             [bar "own" (:playerOne @game-state)]]
         :else [:div {:class "modal-dialog" :role "document"}
                [:div {:class "modal-content"}
                 [:div {:class "modal-header"}
