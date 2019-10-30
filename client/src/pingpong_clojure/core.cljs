@@ -56,15 +56,17 @@
                          r/dom-node
                          .getBoundingClientRect))
 
-(defn bar [id player] [:div {:id id :style {:max-width (str (:width player) "%")
-                                              :left (str (:x player) "%")
-                                              :background-color (:color player)}}])
+(defn bar [id player] 
+  [:div {:id id 
+         :style {:max-width (str (:width player) "%")
+                 :left (str (:x player) "%")
+                 :background-color (:color player)}}])
 
-(defn ball [game-state] [:circle {:style {:fill "black"}
+(defn ball [m] [:circle {:style {:fill "black"}
                         :id "ball"
-                        :cx (str (* js/window.innerWidth (/ (get-in @game-state [:ball :position :x]) 100)) "px")
-                        :cy (str (* js/window.innerHeight (/ (get-in @game-state [:ball :position :y]) 100)) "px")
-                        :r (str (get-in @game-state [:ball :radius]) "%")}])
+                        :cx (str (* js/window.innerWidth (/ (get-in m [:position :x]) 100)) "px")
+                        :cy (str (* js/window.innerHeight (/ (get-in m [:position :y]) 100)) "px")
+                        :r (str (get-in m [:radius]) "%")}])
 
 (defn game-ui [state]
   (cond
@@ -104,9 +106,13 @@
     (let [state (get-in @game-state [:game :state])]
       (cond
         (= state "running") [:div
-                             [:div (-> @game-state :bonuses count)]
+                             [:div {:style {:position "absolute"}} (-> @game-state :bonuses count)]
                              [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
-                              [ball game-state]]
+                              [ball (:ball @game-state)]
+                              (let [bonuses (-> @game-state :bonuses)]
+                                (doall (map-indexed (fn [index item]
+                                                      ^{:key (str "bl-" index)}
+                                                      [ball item]) bonuses)))]
                              [bar "enemy" (:playerTwo @game-state)]
                              [bar "own" (:playerOne @game-state)]]
         :else [:div {:class "modal-dialog" :role "document"}
