@@ -8,6 +8,7 @@
                  [silasdavis/at-at "1.2.0"]
                  [org.clojure/data.json "0.1.2"]
                  [compojure "1.6.1"]
+                 [clj-time "0.15.2"]
                  [cheshire "5.9.0"]]
   :main ^:skip-aot server.core
   :target-path "target/%s"

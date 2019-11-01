@@ -1,7 +1,12 @@
-(ns server.logic)
+(ns server.logic 
+  (:require [clj-time.core :as t]))
 
-(def bonuses [{:name "double-bar" :radius 2 :position {:x 50 :y 50} :step {:x 0 :y 0.1}}
-              {:name "invisible-ball" :radius 2 :position {:x 50 :y 50} :step {:x 0 :y 0.5}}])
+(defn random-number
+  ([start end step] (rand-nth (remove zero? (range start end step))))
+  ([start end] (rand-nth (remove zero? (range start end)))))
+
+(def bonuses [(fn [] {:name "double-bar" :color "blue" :radius 2 :position {:x 50 :y 50} :step {:x 0 :y (random-number -0.5 0.5 0.1)}})
+              (fn [] {:name "invisible-ball" :color "red" :radius 2 :position {:x 50 :y 50} :step {:x 0 :y (random-number -0.5 0.5 0.1)}})])
 
 (def initial-game-state {:game {:state :running}
                          :playerOne {:x 30 :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown false} :bonuses ()}
@@ -20,10 +25,10 @@
                     (update-in [:position :x] + (get-in % [:step :x]))
                     (update-in [:position :y] + (get-in % [:step :y]))) (:bonuses game-state))))
 
-(defn game-over? [ball]
-  (let [ballTop (:y (:position ball))
-        ballBottom (+ (:y (:position ball)) (:radius ball))]
-    (or (<= ballTop 0) (>= ballBottom 100))))
+(defn object-hit-top-or-bottom-wall? [obj]
+  (let [objTop (:y (:position obj))
+        objBottom (+ (:y (:position obj)) (:radius obj))]
+    (or (<= objTop 0) (>= objBottom 100))))
 
 (defn collide-bar? [ball bar] (let [barLeft (:x bar)
                                     barRight (+ (:x bar) (:width bar))
@@ -43,8 +48,8 @@
 (defn collide? [game-state obj] (let
                              [barPlayerOne (:playerOne game-state)
                               barPlayerTwo (:playerTwo game-state)
-                              ball-steps (get-in game-state [:ball :step])
-                              y-direction (if (> (:y ball-steps) 0) :down :up)]
+                              obj-steps (get-in obj [:step])
+                              y-direction (if (> (:y obj-steps) 0) :down :up)]
                               (cond
                                 (and (= y-direction :down) (collide-bar? obj barPlayerOne)) {:player :playerOne :object obj}
                                 (and (= y-direction :up) (collide-bar? obj barPlayerTwo)) {:player :playerTwo :object obj})))
@@ -52,19 +57,21 @@
 (defn revert-direction [k game-state]
   (update-in game-state [:ball :step k] -))
 
-(defn ball-hit-side-wall? [game-state]
-  (let [ball-steps (get-in game-state [:ball :step])
+(defn object-hit-side-wall? [obj]
+  (let [ball-steps (get-in obj [:step])
         x-direction (if (< (:x ball-steps) 0) :down :up)]
     (or
      (and
       (= x-direction :down)
-      (>= 0 (get-in game-state [:ball :position :x])))
+      (>= 0 (get-in obj [:position :x])))
      (and
       (= x-direction :up)
-      (<= 100 (get-in game-state [:ball :position :x]))))))
+      (<= 100 (get-in obj [:position :x]))))))
+
+(defn abs [n] (max n (- n)))
 
 (defn increase-ball-axis [game-state k]
-  (if (< (get-in game-state [:ball :step k]) 2.5)
+  (if (< (abs (get-in game-state [:ball :step k])) 1)
     (cond
       (< (get-in game-state [:ball :step k]) 0) (update-in game-state [:ball :step k] - 0.1)
       (> (get-in game-state [:ball :step k]) 0) (update-in game-state [:ball :step k] + 0.1)
@@ -110,27 +117,32 @@
       :else game-state)
     :else game-state))
 
+(defn generate-bonus? [] (= 1 (rand-int 200)))
+
 (defn generate-bonuses! [game-state]
   (cond
-    (= 1 (rand-int 200))
-    (update-in game-state [:bonuses] conj (rand-nth bonuses))
+    (generate-bonus?) (update-in game-state [:bonuses] conj ((rand-nth bonuses)))
     :else game-state))
 
-(defn check-bonuses-collision [game-state]
-  (let [collisions (filter #(not= nil (collide? game-state %)) (:bonuses game-state))
+; (defn now [] (t/now))
+
+; (defn expired-bonus? [bonus] (< (:start-time bonus) (now ) ))
+
+(defn check-bonuses-collision [gs]
+  (let [game-state (assoc-in gs [:bonuses] (remove object-hit-top-or-bottom-wall? (:bonuses gs)))
+        collisions (filter #(collide? game-state %) (:bonuses game-state))
         collisionResults (map #(collide? game-state %) collisions)
         playerOneCollisions (filter #(= :playerOne (:player %)) collisionResults)
         playerTwoCollisions (filter #(= :playerTwo (:player %)) collisionResults)]
     (-> game-state
-        (update-in [:playerOne :bonuses] concat (map #(-> % :object :name) playerOneCollisions))
-        (update-in [:playerTwo :bonuses] concat (map #(-> % :object :name) playerTwoCollisions))
-        (#(filter (fn [x] (= nil (collide? game-state x))) (:bonuses %)))
-        (#(assoc-in game-state [:bonuses] %)))))
-
+        (#(remove (fn [x] (collide? % x)) (:bonuses %)))
+        (#(assoc-in game-state [:bonuses] %))
+      (update-in [:playerOne :bonuses] concat (map (fn [x] (-> x :object :name)) playerOneCollisions))
+      (update-in [:playerTwo :bonuses] concat (map (fn [x] (-> x :object :name)) playerTwoCollisions)))))
 
 (defn generate-next-state [game-state]
   (cond
-    (game-over? (:ball game-state)) (assoc-in game-state [:game :state] :game-over)
+    (object-hit-top-or-bottom-wall? (:ball game-state)) (assoc-in game-state [:game :state] :game-over)
     :else
     (-> game-state
       move-ball
@@ -139,15 +151,15 @@
       generate-bonuses!
       check-bonuses-collision
       (#(cond
-          (ball-hit-side-wall? %) (revert-direction :x %)
+          (object-hit-side-wall? (:ball %)) (revert-direction :x %)
           :else %))
       (#(if-let [collision (collide? % (:ball %))]
           (do
             (println "COLLIDE!")
-                (increase-ball-speed!
-                 (revert-direction :y
-                                   (check-momentum (:player collision) %)))) %)))))
+            (increase-ball-speed!
+             (revert-direction :y
+                               (check-momentum (:player collision) %)))) %)))))
     
-    (defn game-loop [game]
-      (let [s (generate-next-state (:game-state game))]
-        (assoc-in game [:game-state] s)))
+(defn game-loop [game]
+  (let [s (generate-next-state (:game-state game))]
+    (assoc-in game [:game-state] s)))

@@ -57,12 +57,14 @@
                          .getBoundingClientRect))
 
 (defn bar [id player] 
+  (println (:bonuses player))
   [:div {:id id 
+         :class (clojure.string/join " " (:bonuses player))
          :style {:max-width (str (:width player) "%")
                  :left (str (:x player) "%")
                  :background-color (:color player)}}])
 
-(defn ball [m] [:circle {:style {:fill "black"}
+(defn ball [m] [:circle {:style {:fill (:color m)}
                         :id "ball"
                         :cx (str (* js/window.innerWidth (/ (get-in m [:position :x]) 100)) "px")
                         :cy (str (* js/window.innerHeight (/ (get-in m [:position :y]) 100)) "px")
@@ -106,7 +108,6 @@
     (let [state (get-in @game-state [:game :state])]
       (cond
         (= state "running") [:div
-                             [:div {:style {:position "absolute"}} (-> @game-state :bonuses count)]
                              [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
                               [ball (:ball @game-state)]
                               (let [bonuses (-> @game-state :bonuses)]

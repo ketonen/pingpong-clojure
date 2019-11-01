@@ -22,3 +22,6 @@ div#enemy {
 	top: 1%;
 	position: fixed;
 }
+.double-bar {
+	background-color: yellow !important;
+}
