@@ -57,9 +57,9 @@
                          .getBoundingClientRect))
 
 (defn bar [id player] 
-  (println (:bonuses player))
-  [:div {:id id 
-         :class (clojure.string/join " " (:bonuses player))
+  (println (map #(:name %) (:bonuses player)))
+  [:div {:id id
+         :class (clojure.string/join " " (map #(:name %) (:bonuses player)))
          :style {:max-width (str (:width player) "%")
                  :left (str (:x player) "%")
                  :background-color (:color player)}}])

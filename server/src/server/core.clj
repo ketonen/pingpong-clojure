@@ -1,13 +1,18 @@
 (ns server.core
   (:require [compojure.core :refer :all]
             [cheshire.core :refer :all]
-            [server.logic :refer [game-loop initial-game-state]])
+            [server.logic :refer [game-loop initial-game-state]]
+            [clojure.data.json :as json])
   (:use [org.httpkit.server]
-        [overtone.at-at]
-        [clojure.data.json :only [json-str read-json]]))
+        [overtone.at-at]))
 
 
 (def games (atom []))
+
+(defn value-writer [key value]
+  (if (= key :start-time)
+    (str value)
+    value))
 
 (defn get-game-state [games channel]
   (first (filter
@@ -15,7 +20,7 @@
           games)))
 
 (defn send-changes-to-clients [game-state channel]
-  (send! channel (json-str game-state)))
+  (send! channel (json/write-str game-state :value-fn value-writer)))
 
 (def game-loop-object (atom nil))
 
@@ -58,7 +63,7 @@
                           (remove-channel-from-games channel)
                           (println "channel closed: " status))))
     (on-receive channel (fn [msg]
-                          (let [data (read-json msg)
+                          (let [data (json/read-json msg)
                                 command (:command data)]
                             (cond
                               (= command "start-local") (do
@@ -84,7 +89,7 @@
   (GET "/" [] {:status 200
                :headers {"Content-Type" "application/json; charset=utf-8"
                          "Access-Control-Allow-Origin" "*"}
-               :body (generate-string (get-awailable-games) {:pretty true :escape-non-ascii true})})
+               :body (json/json-str (get-awailable-games) {:pretty true :escape-non-ascii true})})
   (GET "/ws" [] handler))
 
 (defn -main [& args] 

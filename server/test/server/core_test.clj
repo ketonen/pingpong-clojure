@@ -1,6 +1,8 @@
 (ns server.core-test
   (:require [clojure.test :refer :all]
-            [server.logic :refer :all])
+            [server.logic :refer :all]
+            [clj-time.core :as t])
+
   (:use [clojure.pprint]))
 
 (deftest game-loop-tests
@@ -161,3 +163,14 @@
     (is (= game-state (increase-ball-axis game-state :y))))
   (let [game-state {:ball {:step  {:x 1}}}]
     (is (= game-state (increase-ball-axis game-state :x)))))
+
+(deftest bonus-expiration-tests
+  (is (= true (expired-bonus? {:start-time (-> 6 t/seconds t/ago)})))
+  (is (= false (expired-bonus? {:start-time (-> 4 t/seconds t/ago)})))
+  (is (= false (expired-bonus? {:start-time (t/now)}))))
+
+(deftest remove-expired-bonuses-from-player-tests
+  (let [game-state {:playerOne {:bonuses ()}}]
+    (is (= game-state (remove-expired-bonuses-from-player game-state :playerOne))))
+  (let [game-state {:playerOne {:bonuses (seq [{:start-time (t/now)}])}}]
+    (is (= game-state (remove-expired-bonuses-from-player game-state :playerOne)))))

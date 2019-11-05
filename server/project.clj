@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [http-kit "2.3.0"]
                  [silasdavis/at-at "1.2.0"]
-                 [org.clojure/data.json "0.1.2"]
+                 [org.clojure/data.json "0.2.6"]
                  [compojure "1.6.1"]
                  [clj-time "0.15.2"]
                  [cheshire "5.9.0"]]

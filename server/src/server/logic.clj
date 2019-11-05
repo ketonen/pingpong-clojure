@@ -124,12 +124,17 @@
     (generate-bonus?) (update-in game-state [:bonuses] conj ((rand-nth bonuses)))
     :else game-state))
 
-; (defn now [] (t/now))
+(defn now [] (t/now))
 
-; (defn expired-bonus? [bonus] (< (:start-time bonus) (now ) ))
+(defn expired-bonus? [bonus] (= 1 (compare (-> 10 t/seconds t/ago) (-> bonus :start-time))))
+
+(defn remove-expired-bonuses-from-player [game-state k]
+  (assoc-in game-state [k :bonuses] (remove expired-bonus? (get-in game-state [k :bonuses]))))
 
 (defn check-bonuses-collision [gs]
-  (let [game-state (assoc-in gs [:bonuses] (remove object-hit-top-or-bottom-wall? (:bonuses gs)))
+  (let [game-state (remove-expired-bonuses-from-player gs :playerOne)
+        game-state (remove-expired-bonuses-from-player game-state :playerTwo)
+        game-state (assoc-in game-state [:bonuses] (remove object-hit-top-or-bottom-wall? (:bonuses game-state)))
         collisions (filter #(collide? game-state %) (:bonuses game-state))
         collisionResults (map #(collide? game-state %) collisions)
         playerOneCollisions (filter #(= :playerOne (:player %)) collisionResults)
@@ -137,28 +142,39 @@
     (-> game-state
         (#(remove (fn [x] (collide? % x)) (:bonuses %)))
         (#(assoc-in game-state [:bonuses] %))
-      (update-in [:playerOne :bonuses] concat (map (fn [x] (-> x :object :name)) playerOneCollisions))
-      (update-in [:playerTwo :bonuses] concat (map (fn [x] (-> x :object :name)) playerTwoCollisions)))))
+        (update-in [:playerOne :bonuses] concat (map (fn [x] {:name (-> x :object :name) :start-time (now)}) playerOneCollisions))
+        (update-in [:playerTwo :bonuses] concat (map (fn [x] {:name (-> x :object :name) :start-time (now)}) playerTwoCollisions)))))
+
+(defn double-bar-if-bonus [game-state k]
+  (cond
+    (some #(= "double-bar" %) (map #(:name %) (-> game-state k :bonuses))) (assoc-in game-state [k :width] 40)
+    :else (assoc-in game-state [k :width] 20)))
+
+(defn update-bar-widths [game-state]
+  (-> game-state
+      (double-bar-if-bonus :playerOne)
+      (double-bar-if-bonus :playerTwo)))
 
 (defn generate-next-state [game-state]
   (cond
     (object-hit-top-or-bottom-wall? (:ball game-state)) (assoc-in game-state [:game :state] :game-over)
     :else
     (-> game-state
-      move-ball
-      move-bonuses
-      move-bars!
-      generate-bonuses!
-      check-bonuses-collision
-      (#(cond
-          (object-hit-side-wall? (:ball %)) (revert-direction :x %)
-          :else %))
-      (#(if-let [collision (collide? % (:ball %))]
-          (do
-            (println "COLLIDE!")
-            (increase-ball-speed!
-             (revert-direction :y
-                               (check-momentum (:player collision) %)))) %)))))
+        move-ball
+        move-bonuses
+        move-bars!
+        generate-bonuses!
+        check-bonuses-collision
+        update-bar-widths
+        (#(cond
+            (object-hit-side-wall? (:ball %)) (revert-direction :x %)
+            :else %))
+        (#(if-let [collision (collide? % (:ball %))]
+            (do
+              (println "COLLIDE!")
+              (increase-ball-speed!
+               (revert-direction :y
+                                 (check-momentum (:player collision) %)))) %)))))
     
 (defn game-loop [game]
   (let [s (generate-next-state (:game-state game))]

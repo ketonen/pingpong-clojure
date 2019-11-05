@@ -23,5 +23,5 @@ div#enemy {
 	position: fixed;
 }
 .double-bar {
-	background-color: yellow !important;
+	/* background-color: yellow !important; */
 }
