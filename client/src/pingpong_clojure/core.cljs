@@ -56,8 +56,7 @@
                          r/dom-node
                          .getBoundingClientRect))
 
-(defn bar [id player] 
-  (println (map #(:name %) (:bonuses player)))
+(defn bar [id player]
   [:div {:id id
          :class (clojure.string/join " " (map #(:name %) (:bonuses player)))
          :style {:max-width (str (:width player) "%")
@@ -70,64 +69,65 @@
                         :cy (str (* js/window.innerHeight (/ (get-in m [:position :y]) 100)) "px")
                         :r (str (get-in m [:radius]) "%")}])
 
-(defn game-ui [state]
-  (cond
-    (not (empty? @app-state))
-    (cond
-      (not= (first @app-state) :no-games)
-      [:div {:class "modal-dialog" :role "document"}
-       [:div {:class "modal-content"}
-        [:div {:class "modal-header"}
-         [:h5 {:class "modal-title"} "Choose game"]]
-        [:div {:class "modal-body"}
-         [:div {:class "list-group"}
-          (for [i @app-state]
-            ^{:key (str "tr-" i)}
-            [:a {:href "#" :class "list-group-item list-group-item-action"} (:name i)])]]
-        [:div {:class "modal-footer"}
-         [:button {:type "button" :class "btn btn-danger"
-                   :on-click #(reset! app-state ())}
-          "Cancel"]
-         [:button {:type "button" :class "btn btn-primary"
-                   :on-click #(send-to-server "start-online")}
-          "Start"]]]]
-      :else
-      [:div {:class "modal-dialog" :role "document"}
-       [:div {:class "modal-content"}
-        [:div {:class "modal-header"}
-         [:h5 {:class "modal-title"} "New game"]]
-        [:div {:class "modal-body"} "No awailable games at the moment. Create new game?"]
-        [:div {:class "modal-footer"}
-         [:button {:type "button" :class "btn btn-danger"
-                   :on-click #(reset! app-state ())}
-          "Cancel"]
-         [:button {:type "button" :class "btn btn-primary"
-                   :on-click #(send-to-server "start-online")}
-          "Create new game"]]]])
-    :else 
-    (let [state (get-in @game-state [:game :state])]
-      (cond
-        (= state "running") [:div
-                             [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
-                              [ball (:ball @game-state)]
-                              (let [bonuses (-> @game-state :bonuses)]
-                                (doall (map-indexed (fn [index item]
-                                                      ^{:key (str "bl-" index)}
-                                                      [ball item]) bonuses)))]
-                             [bar "enemy" (:playerTwo @game-state)]
-                             [bar "own" (:playerOne @game-state)]]
-        :else [:div {:class "modal-dialog" :role "document"}
-               [:div {:class "modal-content"}
-                [:div {:class "modal-header"}
-                 [:h5 {:class "modal-title"} "Lets play a game"]]
-                [:div {:class "modal-body"} @app-state]
-                [:div {:class "modal-footer"}
-                 [:button {:type "button" :class "btn btn-primary"
-                           :on-click #(send-to-server "start-local")}
-                  "Local game"]
-                 [:button {:type "button" :class "btn btn-primary"
-                           :on-click #(get-awailable-games)}
-                  "Online game"]]]]))))
+(defn game [] (let [state (get-in @game-state [:game :state])]
+                (cond
+                  (= state "running") [:div
+                                       [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
+                                        [ball (:ball @game-state)]
+                                        (let [bonuses (-> @game-state :bonuses)]
+                                          (doall (map-indexed (fn [index item]
+                                                                ^{:key (str "bl-" index)}
+                                                                [ball item]) bonuses)))]
+                                       [bar "enemy" (:playerTwo @game-state)]
+                                       [bar "own" (:playerOne @game-state)]]
+                  :else [:div {:class "modal-dialog" :role "document"}
+                         [:div {:class "modal-content"}
+                          [:div {:class "modal-header"}
+                           [:h5 {:class "modal-title"} "Lets play a game"]]
+                          [:div {:class "modal-body"} @app-state]
+                          [:div {:class "modal-footer"}
+                           [:button {:type "button" :class "btn btn-primary"
+                                     :on-click #(send-to-server "start-local")}
+                            "Local game"]
+                           [:button {:type "button" :class "btn btn-primary"
+                                     :on-click #(get-awailable-games)}
+                            "Online game"]]]])))
+
+(defn game-selection [] (cond
+                          (not= (first @app-state) :no-games)
+                          [:div {:class "modal-dialog" :role "document"}
+                           [:div {:class "modal-content"}
+                            [:div {:class "modal-header"}
+                             [:h5 {:class "modal-title"} "Choose game"]]
+                            [:div {:class "modal-body"}
+                             [:div {:class "list-group"}
+                              (for [i @app-state]
+                                ^{:key (str "tr-" i)}
+                                [:a {:href "#" :class "list-group-item list-group-item-action"} (:name i)])]]
+                            [:div {:class "modal-footer"}
+                             [:button {:type "button" :class "btn btn-danger"
+                                       :on-click #(reset! app-state ())}
+                              "Cancel"]
+                             [:button {:type "button" :class "btn btn-primary"
+                                       :on-click #(send-to-server "start-online")}
+                              "Start"]]]]
+                          :else
+                          [:div {:class "modal-dialog" :role "document"}
+                           [:div {:class "modal-content"}
+                            [:div {:class "modal-header"}
+                             [:h5 {:class "modal-title"} "New game"]]
+                            [:div {:class "modal-body"} "No awailable games at the moment. Create new game?"]
+                            [:div {:class "modal-footer"}
+                             [:button {:type "button" :class "btn btn-danger"
+                                       :on-click #(reset! app-state ())}
+                              "Cancel"]
+                             [:button {:type "button" :class "btn btn-primary"
+                                       :on-click #(send-to-server "start-online")}
+                              "Create new game"]]]]))
+
+(defn game-ui []
+  (cond (seq @app-state) [game-selection]
+        :else [game]))
 
 (r/render-component [game-ui] (. js/document (getElementById "app")))
 
@@ -137,4 +137,3 @@
   ;; (swap! game-state update-in [:__figwheel_counter] inc)
   )
 
-                                                                                

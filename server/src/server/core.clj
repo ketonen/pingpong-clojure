@@ -89,7 +89,7 @@
   (GET "/" [] {:status 200
                :headers {"Content-Type" "application/json; charset=utf-8"
                          "Access-Control-Allow-Origin" "*"}
-               :body (json/json-str (get-awailable-games) {:pretty true :escape-non-ascii true})})
+               :body (json/json-str (get-awailable-games))})
   (GET "/ws" [] handler))
 
 (defn -main [& args] 
