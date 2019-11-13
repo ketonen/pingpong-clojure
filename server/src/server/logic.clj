@@ -8,7 +8,7 @@
 (def bonuses [(fn [] {:name "double-bar" :color "blue" :radius 2 :position {:x 50 :y 50} :step {:x 0 :y (random-number -0.5 0.5 0.1)}})
               (fn [] {:name "invisible-ball" :color "red" :radius 2 :position {:x 50 :y 50} :step {:x 0 :y (random-number -0.5 0.5 0.1)}})])
 
-(def initial-game-state {:game {:state :running}
+(def initial-game-state {:game {:state :paused}
                          :playerOne {:x 30 :height 3 :y 98 :width 20 :color "blue" :input {:leftDown false :rightDown false} :bonuses ()}
                          :playerTwo {:x 30 :height 3 :y 2 :width 20 :color "red" :input {:leftDown false :rightDown false} :bonuses ()}
                          :ball {:radius 2 :position {:x 50 :y 50} :step {:x 0 :y 1}}
@@ -177,5 +177,7 @@
                                  (check-momentum (:player collision) %)))) %)))))
     
 (defn game-loop [game]
-  (let [s (generate-next-state (:game-state game))]
+  (let [s (if (= (-> game :game-state :game :state) :running) 
+            (generate-next-state (:game-state game))
+            (:game-state game))]
     (assoc-in game [:game-state] s)))
