@@ -98,14 +98,12 @@
                                                              (reset! game-loop-object (start-game))))
                               (= command "join-game") (do
                                                         (println "JOINING ONLINE GAME")
-                                                        (clojure.pprint/pprint @games)
                                                         (let [game-name (-> data :extra :game-name)
                                                               game (first (filter #(= game-name (-> % :playerOne :name)) @games))
                                                               index (.indexOf @games game)
                                                               game (assoc-in game [:playerTwo :channel] channel)
                                                               game (assoc-in game [:game-state :game :state] :running)]
                                                           (swap! games assoc-in [index] game))
-                                                        (clojure.pprint/pprint @games)
                                                         (stop-and-reset-pool! my-pool)
                                                         (if (not= game-loop-object nil)
                                                           (reset! game-loop-object (start-game))))
