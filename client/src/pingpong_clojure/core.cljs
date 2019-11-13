@@ -112,11 +112,10 @@
                                (< (-> @game-type-selection-options :playerOneName count) min-length)
                                (< (-> @game-type-selection-options :playerTwoName count) min-length)))
                :class "btn btn-primary" 
-               :on-click #(send-to-server "start-local" {:playerOneName (-> @game-type-selection-options :playerOneName)
-                                                         :playerTwoName (-> @game-type-selection-options :playerTwoName)})} "Start"]]]])))
+               :on-click #(send-to-server "start-local" {:playerOneName (:playerOneName @game-type-selection-options)
+                                                         :playerTwoName (:playerTwoName @game-type-selection-options)})} "Start"]]]])))
 
 (defn game [] (let [state (-> @game-state :game :state)]
-                (println state)
                 (cond
                   (= state "running") [:div
                                        [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
@@ -127,6 +126,20 @@
                                                                 [ball item]) bonuses)))]
                                        [bar "enemy" (:playerTwo @game-state)]
                                        [bar "own" (:playerOne @game-state)]]
+                  (= state "game-over") [:div {:class "modal-dialog" :role "document"}
+                                         [:div {:class "modal-content"}
+                                          [:div {:class "modal-header"}
+                                           [:h5 {:class "modal-title"} "Game over"]]
+                                          [:div {:class "modal-body"} "Winner: " (:winner @game-state)]
+                                          [:div {:class "modal-footer"}
+                                           [:button {:type "button" :class "btn btn-danger"
+                                                     :on-click #(do
+                                                                  (reset! game-state {}) 
+                                                                  (reset! game-type-selection-options game-type-selection-options-defaults))} "Cancel"]
+                                           [:button {:type "button" :class "btn btn-primary"
+                                                     :on-click #(send-to-server "start-local" {:playerOneName (:playerOneName @game-type-selection-options)
+                                                                                               :playerTwoName (:playerTwoName @game-type-selection-options)})}
+                                            "Play again"]]]]
                   :else [game-type-selection])))
 
 (defn no-awailable-games [] [:div {:class "modal-dialog" :role "document"}
@@ -139,7 +152,6 @@
                                          :on-click #(reset! game-type-selection-options game-type-selection-options-defaults)} "Cancel"]
                                [:button {:type "button" :class "btn btn-primary"
                                          :on-click #(swap! game-type-selection-options assoc :game-type :online)}
-                                      ;  :on-click #(send-to-server "start-online")}
                                 "Create new game"]]]])
 
 (defn game-selection []

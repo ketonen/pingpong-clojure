@@ -157,7 +157,10 @@
 
 (defn generate-next-state [game-state]
   (cond
-    (object-hit-top-or-bottom-wall? (:ball game-state)) (assoc-in game-state [:game :state] :game-over)
+    (object-hit-top-or-bottom-wall? (:ball game-state)) 
+    (-> game-state
+        (assoc-in [:game :state] :game-over)
+        (assoc-in [:winner] "Winners name"))
     :else
     (-> game-state
         move-ball
