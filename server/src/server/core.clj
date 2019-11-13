@@ -71,7 +71,7 @@
   (with-channel request channel
     (on-close channel (fn [status]
                         (let [gs (get-game @games channel)]
-                          (if (and (not= gs nil) (= 1 (count @games)))
+                          (when (and (not= gs nil) (= 1 (count @games)))
                             (stop @game-loop-object))
                           (remove-channel-from-games channel)
                           (println "channel closed: " status))))
@@ -86,7 +86,7 @@
                                                           (let [game (add-channel-to-game channel :local (:playerOneName (:extra data)) (:playerTwoName (:extra data)))
                                                                 game (assoc-in game [:game-state :game :state] :running)]
                                                             (swap! games conj game))
-                                                          (if (not= game-loop-object nil)
+                                                          (when (not= game-loop-object nil)
                                                             (reset! game-loop-object (start-game))))
                               (= command "start-online") (do
                                                            (println "STARTING ONLINE GAME")
@@ -94,7 +94,7 @@
                                                            (let [game (add-channel-to-game channel :online (:playerOneName (:extra data)))
                                                                  game (assoc-in game [:game-state :game :state] :waiting-player)]
                                                              (swap! games conj game))
-                                                           (if (not= game-loop-object nil)
+                                                           (when (not= game-loop-object nil)
                                                              (reset! game-loop-object (start-game))))
                               (= command "join-game") (do
                                                         (println "JOINING ONLINE GAME")
@@ -105,7 +105,7 @@
                                                               game (assoc-in game [:game-state :game :state] :running)]
                                                           (swap! games assoc-in [index] game))
                                                         (stop-and-reset-pool! my-pool)
-                                                        (if (not= game-loop-object nil)
+                                                        (when (not= game-loop-object nil)
                                                           (reset! game-loop-object (start-game))))
                               (= command "stop") (do (println "STOPPING...")
                                                      (stop-and-reset-pool! my-pool))
