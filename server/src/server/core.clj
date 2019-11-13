@@ -61,9 +61,9 @@
                  (reset! games g)))
          my-pool))
 
-(defn update-input-state [channel event b] (let [game (get-game @games channel)
+(defn update-input-state [channel event state] (let [game (get-game @games channel)
                                                  player (if (= channel (-> game :playerOne :channel)) :playerOne :playerTwo)]
-                                             (update-game-state! channel (assoc-in game [:game-state player :input event] b))))
+                                             (update-game-state! channel (assoc-in game [:game-state player :input event] state))))
 
 (defn local-game? [game] (= :local (-> game :game-type)))
 
