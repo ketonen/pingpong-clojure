@@ -28,7 +28,11 @@
 (defn object-hit-top-or-bottom-wall? [obj]
   (let [objTop (:y (:position obj))
         objBottom (+ (:y (:position obj)) (:radius obj))]
-    (or (<= objTop 0) (>= objBottom 100))))
+    (cond (<= objTop 0)
+          :top
+          (>= objBottom 100)
+          :bottom
+          :else nil)))
 
 (defn collide-bar? [ball bar] (let [barLeft (:x bar)
                                     barRight (+ (:x bar) (:width bar))
@@ -155,32 +159,34 @@
       (double-bar-if-bonus :playerOne)
       (double-bar-if-bonus :playerTwo)))
 
-(defn generate-next-state [game-state]
-  (cond
-    (object-hit-top-or-bottom-wall? (:ball game-state)) 
-    (-> game-state
-        (assoc-in [:game :state] :game-over)
-        (assoc-in [:winner] "Winners name"))
-    :else
-    (-> game-state
-        move-ball
-        move-bonuses
-        move-bars!
-        generate-bonuses!
-        check-bonuses-collision
-        update-bar-widths
-        (#(cond
-            (object-hit-side-wall? (:ball %)) (revert-direction :x %)
-            :else %))
-        (#(if-let [collision (collide? % (:ball %))]
-            (do
-              (println "COLLIDE!")
-              (increase-ball-speed!
-               (revert-direction :y
-                                 (check-momentum (:player collision) %)))) %)))))
+(defn generate-next-state [game]
+  (let [game-state (:game-state game)
+        wall (object-hit-top-or-bottom-wall? (:ball game-state))]
+    (assoc-in game [:game-state]
+              (cond
+                (not (nil? wall))
+                (-> game-state
+                    (assoc-in [:game :state] :game-over)
+                    (assoc-in [:winner] (if (= wall :top) (-> game :playerOne :name) (-> game :playerTwo :name))))
+                :else
+                (-> game-state
+                    move-ball
+                    move-bonuses
+                    move-bars!
+                    generate-bonuses!
+                    check-bonuses-collision
+                    update-bar-widths
+                    (#(cond
+                        (object-hit-side-wall? (:ball %)) (revert-direction :x %)
+                        :else %))
+                    (#(if-let [collision (collide? % (:ball %))]
+                        (do
+                          (println "COLLIDE!")
+                          (increase-ball-speed!
+                           (revert-direction :y
+                                             (check-momentum (:player collision) %)))) %)))))))
     
 (defn game-loop [game]
-  (let [s (if (= (-> game :game-state :game :state) :running) 
-            (generate-next-state (:game-state game))
-            (:game-state game))]
-    (assoc-in game [:game-state] s)))
+  (if (= (-> game :game-state :game :state) :running)
+    (generate-next-state game)
+    game))
