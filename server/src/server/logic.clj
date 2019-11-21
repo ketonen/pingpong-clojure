@@ -87,14 +87,14 @@
       :else game-state)
     game-state))
 
-(defn increase-ball-speed! [game-state]
+(defn increase-ball-speed [game-state]
   (-> game-state
       (increase-ball-axis :x)
       (increase-ball-axis :y)))
 
-(defn decrease-ball-speed! [game-state] (update-in game-state [:ball :step :x] dec))
+(defn decrease-ball-speed [game-state] (update-in game-state [:ball :step :x] dec))
 
-(defn move-bar! [game-state k]
+(defn move-bar [game-state k]
   (cond
     (and (< (+ (get-in game-state [k :width]) (get-in game-state [k :x])) 100) (get-in game-state [k :input :rightDown]))
     (update-in game-state [k :x] inc)
@@ -102,12 +102,12 @@
     (update-in game-state [k :x] dec)
     :else game-state))
 
-(defn move-bars! [game-state]
+(defn move-bars [game-state]
   (-> game-state
-      (move-bar! :playerOne)
-      (move-bar! :playerTwo)))
+      (move-bar :playerOne)
+      (move-bar :playerTwo)))
 
-(defn add-momentum! [game-state f]
+(defn add-momentum [game-state f]
   (cond
     (= (get-in game-state [:ball :step :x]) 0) (assoc-in game-state [:ball :step :x] (f 0.2))
     :else (update-in game-state [:ball :step :x] f 0.2)))
@@ -116,19 +116,19 @@
   (cond
     (>= (get-in game-state [:ball :step :x]) 0)
     (cond
-      (= true (get-in game-state [collision :input :rightDown])) (add-momentum! game-state +)
-      (= true (get-in game-state [collision :input :leftDown])) (add-momentum! game-state -)
+      (= true (get-in game-state [collision :input :rightDown])) (add-momentum game-state +)
+      (= true (get-in game-state [collision :input :leftDown])) (add-momentum game-state -)
       :else game-state)
     (<= (get-in game-state [:ball :step :x]) 0)
     (cond
-      (= true (get-in game-state [collision :input :leftDown])) (add-momentum! game-state -)
-      (= true (get-in game-state [collision :input :rightDown])) (add-momentum! game-state +)
+      (= true (get-in game-state [collision :input :leftDown])) (add-momentum game-state -)
+      (= true (get-in game-state [collision :input :rightDown])) (add-momentum game-state +)
       :else game-state)
     :else game-state))
 
 (defn generate-bonus? [] (= 1 (rand-int 200)))
 
-(defn generate-bonuses! [game-state]
+(defn generate-bonuses [game-state]
   (cond
     (generate-bonus?) (update-in game-state [:bonuses] conj ((rand-nth bonuses)))
     :else game-state))
@@ -177,8 +177,8 @@
                 (-> game-state
                     move-ball
                     move-bonuses
-                    move-bars!
-                    generate-bonuses!
+                    move-bars
+                    generate-bonuses
                     check-bonuses-collision
                     update-bar-widths
                     (#(cond
@@ -187,7 +187,7 @@
                     (#(if-let [collision (collide? % (:ball %))]
                         (do
                           (println "COLLIDE!")
-                          (increase-ball-speed!
+                          (increase-ball-speed
                            (revert-direction :y
                                              (check-momentum (:player collision) %)))) %)))))))
 

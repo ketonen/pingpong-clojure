@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [server.logic :refer :all]
             [clj-time.core :as t])
-
   (:use [clojure.pprint]))
 
 (deftest game-loop-tests
@@ -36,14 +35,14 @@
 (deftest generate-bonus-tests
   (with-redefs [server.logic/generate-bonus? (fn [] true)]
     (let [game-state  {:bonuses ()}]
-      (is 1 (count (generate-bonuses! game-state))))))
+      (is 1 (count (generate-bonuses game-state))))))
 
 #_(deftest object-hit-top-or-bottom-wall?-test
     (is true (object-hit-top-or-bottom-wall? {:name "invisible-ball"
                                               :color "red"
-                                           :radius 2
-                                           :position {:x 50, :y 2.600000000000117}
-                                           :step {:x 0, :y -0.30000000000000004}})))
+                                              :radius 2
+                                              :position {:x 50, :y 2.600000000000117}
+                                              :step {:x 0, :y -0.30000000000000004}})))
 
 (deftest bonus-should-collide
   (let [gs {:game {:state :running}
@@ -69,12 +68,12 @@
                         :radius 2
                         :position {:x 50, :y 2.600000000000117}
                         :step {:x 0, :y -0.30000000000000004}})}]
-    (is (= 
+    (is (=
          {:player :playerTwo :object {:name "invisible-ball"
                                       :color "red"
                                       :radius 2
                                       :position {:x 50, :y 2.600000000000117}
-                                      :step {:x 0, :y -0.30000000000000004}}} 
+                                      :step {:x 0, :y -0.30000000000000004}}}
          (collide? gs (-> gs :bonuses first))))))
 
 (deftest check-bonuses-collision-tests
@@ -131,25 +130,25 @@
                      :step {:x 0, :y 1.6000000000000005}}
                     :bonuses
                     '({:name "double-bar"
-                      :color "blue"
-                      :radius 2
-                      :position {:x 50, :y 50.0}
-                      :step {:x 0, :y -2.7755575615628914E-17}}
-                     {:name "double-bar"
-                      :color "blue"
-                      :radius 2
-                      :position {:x 50, :y 88.40000000000029}
-                      :step {:x 0, :y 0.4}}
-                     {:name "double-bar"
-                      :color "blue"
-                      :radius 2
-                      :position {:x 50, :y 95.60000000000039}
-                      :step {:x 0, :y 0.4}}
-                     {:name "double-bar"
-                      :color "blue"
-                      :radius 2
-                      :position {:x 50, :y 86.09999999999894}
-                      :step {:x 0, :y 0.09999999999999998}})}
+                       :color "blue"
+                       :radius 2
+                       :position {:x 50, :y 50.0}
+                       :step {:x 0, :y -2.7755575615628914E-17}}
+                      {:name "double-bar"
+                       :color "blue"
+                       :radius 2
+                       :position {:x 50, :y 88.40000000000029}
+                       :step {:x 0, :y 0.4}}
+                      {:name "double-bar"
+                       :color "blue"
+                       :radius 2
+                       :position {:x 50, :y 95.60000000000039}
+                       :step {:x 0, :y 0.4}}
+                      {:name "double-bar"
+                       :color "blue"
+                       :radius 2
+                       :position {:x 50, :y 86.09999999999894}
+                       :step {:x 0, :y 0.09999999999999998}})}
         new-state (check-bonuses-collision game-state)]
     (is (= 3 (-> new-state :bonuses count)))
     (is (= '("double-bar") (-> new-state :playerOne :bonuses)))))
