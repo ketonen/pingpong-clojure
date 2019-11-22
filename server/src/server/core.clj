@@ -28,10 +28,13 @@
                                        (->> (filter (comp nil? :playerTwo) @games)
                                             (map #(get-in % [:playerOne]))))))
 
+(defmulti add-channel-to-game (fn [& x] (second x)))
 
-(defn add-channel-to-game
-  ([channel gameType playerName]
-   {:playerOne {:channel channel :name playerName} :game-state initial-game-state})
+(defmethod add-channel-to-game :online
+  ([channel _ playerName]
+   {:playerOne {:channel channel :name playerName} :game-state initial-game-state}))
+
+(defmethod add-channel-to-game :local
   ([channel gameType playerOneName playerTwoName]
    {:playerOne {:channel channel :name playerOneName}
     :playerTwo {:channel channel :name playerTwoName}
