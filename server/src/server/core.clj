@@ -31,8 +31,10 @@
 (defmulti add-channel-to-game (fn [& x] (second x)))
 
 (defmethod add-channel-to-game :online
-  ([channel _ playerName]
-   {:playerOne {:channel channel :name playerName} :game-state initial-game-state}))
+  ([channel gameType playerName]
+   {:playerOne {:channel channel :name playerName}
+    :game-type gameType
+    :game-state initial-game-state}))
 
 (defmethod add-channel-to-game :local
   ([channel gameType playerOneName playerTwoName]
