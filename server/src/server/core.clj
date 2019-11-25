@@ -48,8 +48,8 @@
     :game-state initial-game-state}))
 
 (defn remove-channel-from-games [games channel]
-  (vec (remove #(or (=  (:channel (:playerOne %)) channel)
-                    (=  (:channel (:playerTwo %)) channel)) games)))
+  (vec (remove #(or (= (:channel (:playerOne %)) channel)
+                    (= (:channel (:playerTwo %)) channel)) games)))
 
 (defn update-game-state! [channel d]
   (let [x (map #(if (or (= (:channel (:playerOne %)) channel) (= (:channel (:playerTwo %)) channel)) d %) @games)]
@@ -77,70 +77,72 @@
 
 (defn handler [request]
   (with-channel request channel
-    (on-close channel (fn [status]
-                        (reset! games (remove-channel-from-games @games channel))
-                        (when (empty? @games)
-                          (stop @game-loop-object))
-                        (println "channel closed: " status)))
-    (on-receive channel (fn [msg]
-                          (let [data (json/read-json msg)
-                                command (:command data)]
-                            (cond
-                              (= command "start-local") (do
-                                                          (println "STARTING LOCAL GAME")
-                                                          (stop-and-reset-pool! my-pool)
+    (on-close channel
+              (fn [status]
+                (reset! games (remove-channel-from-games @games channel))
+                (when (empty? @games)
+                  (stop @game-loop-object))
+                (println "channel closed: " status)))
+    (on-receive channel
+                (fn [msg]
+                  (let [data (json/read-json msg)
+                        command (:command data)]
+                    (cond
+                      (= command "start-local") (do
+                                                  (println "STARTING LOCAL GAME")
+                                                  (stop-and-reset-pool! my-pool)
 
-                                                          (let [game (add-channel-to-game channel :local (:playerOneName (:extra data)) (:playerTwoName (:extra data)))
-                                                                game (assoc-in game [:game-state :game :state] :running)]
-                                                            (swap! games conj game))
+                                                  (let [game (add-channel-to-game channel :local (:playerOneName (:extra data)) (:playerTwoName (:extra data)))
+                                                        game (assoc-in game [:game-state :game :state] :running)]
+                                                    (swap! games conj game))
 
-                                                          (when (not= game-loop-object nil)
-                                                            (reset! game-loop-object (start-game))))
-                              (= command "start-online") (do
-                                                           (println "STARTING ONLINE GAME")
-                                                           (stop-and-reset-pool! my-pool)
-                                                           (let [game (add-channel-to-game channel :online (:playerOneName (:extra data)))
-                                                                 game (assoc-in game [:game-state :game :state] :waiting-player)]
-                                                             (swap! games conj game))
+                                                  (when (not= game-loop-object nil)
+                                                    (reset! game-loop-object (start-game))))
+                      (= command "start-online") (do
+                                                   (println "STARTING ONLINE GAME")
+                                                   (stop-and-reset-pool! my-pool)
+                                                   (let [game (add-channel-to-game channel :online (:playerOneName (:extra data)))
+                                                         game (assoc-in game [:game-state :game :state] :waiting-player)]
+                                                     (swap! games conj game))
 
-                                                           (when (not= game-loop-object nil)
-                                                             (reset! game-loop-object (start-game))))
-                              (= command "join-game") (do
-                                                        (println "JOINING ONLINE GAME")
+                                                   (when (not= game-loop-object nil)
+                                                     (reset! game-loop-object (start-game))))
+                      (= command "join-game") (do
+                                                (println "JOINING ONLINE GAME")
 
-                                                        (let [game-name (-> data :extra :game-name)
-                                                              game (first (filter #(= game-name (-> % :playerOne :name)) @games))
-                                                              index (.indexOf ^java.util.List @games game)
-                                                              game (assoc-in game [:playerTwo :channel] channel)
-                                                              game (assoc-in game [:playerTwo :name] (-> data :extra :playerTwoName))
-                                                              game (assoc-in game [:game-state :game :state] :running)]
-                                                          (swap! games assoc-in [index] game))
+                                                (let [game-name (-> data :extra :game-name)
+                                                      game (first (filter #(= game-name (-> % :playerOne :name)) @games))
+                                                      index (.indexOf ^java.util.List @games game)
+                                                      game (assoc-in game [:playerTwo :channel] channel)
+                                                      game (assoc-in game [:playerTwo :name] (-> data :extra :playerTwoName))
+                                                      game (assoc-in game [:game-state :game :state] :running)]
+                                                  (swap! games assoc-in [index] game))
 
-                                                        (stop-and-reset-pool! my-pool)
-                                                        (when (not= game-loop-object nil)
-                                                          (reset! game-loop-object (start-game))))
-                              (= command "stop") (do (println "STOPPING...")
-                                                     (stop-and-reset-pool! my-pool))
-                              (= command "own-right-down") (update-input-state channel :rightDown true)
-                              (= command "own-left-down") (update-input-state channel :leftDown true)
-                              (= command "own-right-up") (update-input-state channel :rightDown false)
-                              (= command "own-left-up") (update-input-state channel :leftDown false)
-                              (= command "enemy-right-down")
-                              (let [game (get-game @games channel)]
-                                (when (local-game? game)
-                                  (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :rightDown] true))))
-                              (= command "enemy-left-down")
-                              (let [game (get-game @games channel)]
-                                (when (local-game? game)
-                                  (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :leftDown] true))))
-                              (= command "enemy-right-up")
-                              (let [game (get-game @games channel)]
-                                (when (local-game? game)
-                                  (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :rightDown] false))))
-                              (= command "enemy-left-up")
-                              (let [game (get-game @games channel)]
-                                (when (local-game? game)
-                                  (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :leftDown] false))))))))))
+                                                (stop-and-reset-pool! my-pool)
+                                                (when (not= game-loop-object nil)
+                                                  (reset! game-loop-object (start-game))))
+                      (= command "stop") (do (println "STOPPING...")
+                                             (stop-and-reset-pool! my-pool))
+                      (= command "own-right-down") (update-input-state channel :rightDown true)
+                      (= command "own-left-down") (update-input-state channel :leftDown true)
+                      (= command "own-right-up") (update-input-state channel :rightDown false)
+                      (= command "own-left-up") (update-input-state channel :leftDown false)
+                      (= command "enemy-right-down")
+                      (let [game (get-game @games channel)]
+                        (when (local-game? game)
+                          (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :rightDown] true))))
+                      (= command "enemy-left-down")
+                      (let [game (get-game @games channel)]
+                        (when (local-game? game)
+                          (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :leftDown] true))))
+                      (= command "enemy-right-up")
+                      (let [game (get-game @games channel)]
+                        (when (local-game? game)
+                          (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :rightDown] false))))
+                      (= command "enemy-left-up")
+                      (let [game (get-game @games channel)]
+                        (when (local-game? game)
+                          (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :leftDown] false))))))))))
 
 (defroutes all-routes
   (GET "/" [] {:status 200
