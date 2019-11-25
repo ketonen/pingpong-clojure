@@ -1,11 +1,15 @@
 (ns server.core
-  (:require [compojure.core :refer :all]
+  (:require [compojure.handler :as handler]
+            [compojure.core :refer :all]
             [cheshire.core :refer :all]
+            [compojure.handler :refer [site]]
+            [ring.middleware.reload :as reload]
             [server.logic :refer [game-loop initial-game-state]]
             [clojure.data.json :as json])
-  (:use [org.httpkit.server]
+  (:use [org.httpkit.server :only [run-server send! with-channel on-close on-receive]]
         [overtone.at-at]))
 
+(set! *warn-on-reflection* true)
 
 (def games (atom []))
 
@@ -24,9 +28,9 @@
 
 (def game-loop-object (atom nil))
 
-(defn get-awailable-games [] (vec (map #(select-keys % [:name])
-                                       (->> (filter (comp nil? :playerTwo) @games)
-                                            (map #(get-in % [:playerOne]))))))
+(defn get-awailable-games [games] (vec (map #(select-keys % [:name])
+                                            (->> (filter (comp nil? :playerTwo) games)
+                                                 (map #(get-in % [:playerOne]))))))
 
 (defmulti add-channel-to-game (fn [& x] (second x)))
 
@@ -103,12 +107,15 @@
                                                              (reset! game-loop-object (start-game))))
                               (= command "join-game") (do
                                                         (println "JOINING ONLINE GAME")
+
                                                         (let [game-name (-> data :extra :game-name)
                                                               game (first (filter #(= game-name (-> % :playerOne :name)) @games))
-                                                              index (.indexOf @games game)
+                                                              index (.indexOf ^java.util.List @games game)
                                                               game (assoc-in game [:playerTwo :channel] channel)
+                                                              game (assoc-in game [:playerTwo :name] (-> data :extra :playerTwoName))
                                                               game (assoc-in game [:game-state :game :state] :running)]
                                                           (swap! games assoc-in [index] game))
+
                                                         (stop-and-reset-pool! my-pool)
                                                         (when (not= game-loop-object nil)
                                                           (reset! game-loop-object (start-game))))
@@ -139,9 +146,16 @@
   (GET "/" [] {:status 200
                :headers {"Content-Type" "application/json; charset=utf-8"
                          "Access-Control-Allow-Origin" "*"}
-               :body (json/json-str (get-awailable-games))})
+               :body (json/json-str (get-awailable-games @games))})
   (GET "/ws" [] handler))
 
+(defn in-dev? [& args] true) ;; TODO read a config variable from command line, env, or file?
+
+(def app (site all-routes))
+
 (defn -main [& args]
-  (run-server all-routes {:port 9090})
-  (println "SERVER STARTED"))
+  (let [handler (if (in-dev? args)
+                  (reload/wrap-reload (site #'all-routes)) ;; only reload when dev
+                  (site all-routes))]
+    (run-server handler {:port 9090})
+    (println "SERVER STARTED")))

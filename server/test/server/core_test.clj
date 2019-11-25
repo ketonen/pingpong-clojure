@@ -1,6 +1,7 @@
 (ns server.core-test
   (:require [clojure.test :refer :all]
             [server.logic :refer :all]
+            [criterium.core :as crit]
             [clj-time.core :as t])
   (:use [clojure.pprint]))
 

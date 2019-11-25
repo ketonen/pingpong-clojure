@@ -5,8 +5,8 @@
   ([start end step] (rand-nth (remove zero? (range start end step))))
   ([start end] (rand-nth (remove zero? (range start end)))))
 
-(def bonuses [(fn [] {:name "double-bar" :color "blue" :radius 2 :position {:x 50 :y 50} :step {:x 0 :y (random-number -0.5 0.5 0.1)}})
-              (fn [] {:name "invisible-ball" :color "red" :radius 2 :position {:x 50 :y 50} :step {:x 0 :y (random-number -0.5 0.5 0.1)}})])
+(def bonuses [(fn [] {:name "double-bar" :color "blue" :radius 2 :position {:x (random-number 1 99) :y 50} :step {:x 0 :y (random-number -0.5 0.5 0.1)}})
+              (fn [] {:name "invisible-ball" :color "red" :radius 2 :position {:x (random-number 1 99) :y 50} :step {:x 0 :y (random-number -0.5 0.5 0.1)}})])
 
 (defrecord GameState [game playerOne playerTwo ball bonuses])
 (defrecord Input [leftDown rightDown])
