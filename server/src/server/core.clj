@@ -75,6 +75,9 @@
 
 (defn local-game? [game] (= :local (-> game :game-type)))
 
+(defn update-local-game-input [game channel player input value] (when (local-game? game)
+                                                                  (update-game-state! channel (assoc-in game [:game-state player :input input] value))))
+
 (defn handler [request]
   (with-channel request channel
     (on-close channel
@@ -128,21 +131,13 @@
                       (= command "own-right-up") (update-input-state channel :rightDown false)
                       (= command "own-left-up") (update-input-state channel :leftDown false)
                       (= command "enemy-right-down")
-                      (let [game (get-game @games channel)]
-                        (when (local-game? game)
-                          (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :rightDown] true))))
+                      (let [game (get-game @games channel)] (update-local-game-input game channel :playerTwo :rightDown true))
                       (= command "enemy-left-down")
-                      (let [game (get-game @games channel)]
-                        (when (local-game? game)
-                          (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :leftDown] true))))
+                      (let [game (get-game @games channel)] (update-local-game-input game channel :playerTwo :leftDown true))
                       (= command "enemy-right-up")
-                      (let [game (get-game @games channel)]
-                        (when (local-game? game)
-                          (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :rightDown] false))))
+                      (let [game (get-game @games channel)] (update-local-game-input game channel :playerTwo :rightDown false))
                       (= command "enemy-left-up")
-                      (let [game (get-game @games channel)]
-                        (when (local-game? game)
-                          (update-game-state! channel (assoc-in game [:game-state :playerTwo :input :leftDown] false))))))))))
+                      (let [game (get-game @games channel)] (update-local-game-input game channel :playerTwo :leftDown false))))))))
 
 (defroutes all-routes
   (GET "/" [] {:status 200
