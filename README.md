@@ -3,9 +3,9 @@
 ## Practice project for my clojure journey
 
 <figure class="image">
-  <img src="Screenshot.png" alt="Example of gameplay">
+  <img src="Screenshot.png" alt="Example of gameplay" height="300px">
   <figcaption><i>Example of gameplay. Blue and red balls are bonuses. Black one is actual ball.</i></figcaption>
-</figure>
+</figure><br/><br/>
 
 You can play local or online game. In practise, if application is deployed to hosting service two players can play agains each other with different computers (requires some minor tweaks currently).
 
