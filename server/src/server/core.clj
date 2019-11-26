@@ -15,7 +15,7 @@
 
 (defn value-writer [key value]
   (cond (= key :start-time) (str value)
-        (and (= key :ball) (= false (:visible value))) (do (clojure.pprint/pprint value) (dissoc value :position))
+        (and (= key :ball) (= false (:visible value))) (dissoc value :position)
         :else value))
 
 (defn get-game [games channel]
