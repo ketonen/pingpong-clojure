@@ -14,9 +14,9 @@
 (def games (atom []))
 
 (defn value-writer [key value]
-  (if (= key :start-time)
-    (str value)
-    value))
+  (cond (= key :start-time) (str value)
+        (and (= key :ball) (= false (:visible value))) (do (clojure.pprint/pprint value) (dissoc value :position))
+        :else value))
 
 (defn get-game [games channel]
   (first (filter

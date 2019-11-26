@@ -132,7 +132,7 @@
                 (cond
                   (= state "running") [:div
                                        [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
-                                        [ball (:ball @game-state)]
+                                        (when (-> @game-state :ball :visible) [ball (:ball @game-state)])
                                         (let [bonuses (-> @game-state :bonuses)]
                                           (doall (map-indexed (fn [index item]
                                                                 ^{:key (str "bl-" index)}

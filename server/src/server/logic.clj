@@ -11,12 +11,12 @@
 (defrecord GameState [game playerOne playerTwo ball bonuses])
 (defrecord Input [leftDown rightDown])
 (defrecord Player [x height y width color input bonuses])
-(defrecord Ball [radius position step])
+(defrecord Ball [radius position step visible])
 
 (def initial-game-state (GameState. {:state :paused}
                                     (Player. 30 3 98 20 "blue" {:leftDown false :rightDown false} ())
                                     (Player. 30 3 2 20 "red" {:leftDown false :rightDown false} ())
-                                    (Ball. 2 {:x 50 :y 50} {:x 0 :y 1})
+                                    (Ball. 2 {:x 50 :y 50} {:x 0 :y 1} true)
                                     ()))
 
 (defn move-ball [game-state]
@@ -155,14 +155,23 @@
         (update-in [:playerTwo :bonuses] concat (map (fn [x] {:name (-> x :object :name) :start-time (now)}) playerTwoCollisions)))))
 
 (defn double-bar-if-bonus [game-state k]
-  (cond
-    (some #(= "double-bar" %) (map #(:name %) (-> game-state k :bonuses))) (assoc-in game-state [k :width] 40)
-    :else (assoc-in game-state [k :width] 20)))
+  (let [bonuses (map #(:name %) (-> game-state k :bonuses))]
+    (cond
+      (some #(= "double-bar" %) bonuses) (assoc-in game-state [k :width] 40)
+      :else (assoc-in game-state [k :width] 20))))
 
-(defn update-bar-widths [game-state]
+(defn set-ball-visibility-if-bonus [game-state]
+  (let [bonuses (concat (map #(:name %) (-> game-state :playerOne :bonuses))
+                        (map #(:name %) (-> game-state :playerTwo :bonuses)))]
+    (if
+     (some #(= "invisible-ball" %) bonuses) (assoc-in game-state [:ball :visible] false)
+     (assoc-in game-state [:ball :visible] true))))
+
+(defn update-game-according-to-bonuses [game-state]
   (-> game-state
       (double-bar-if-bonus :playerOne)
-      (double-bar-if-bonus :playerTwo)))
+      (double-bar-if-bonus :playerTwo)
+      (set-ball-visibility-if-bonus)))
 
 (defn generate-next-state [game]
   (let [game-state (:game-state game)
@@ -180,16 +189,14 @@
                     move-bars
                     generate-bonuses
                     check-bonuses-collision
-                    update-bar-widths
+                    update-game-according-to-bonuses
                     (#(cond
                         (object-hit-side-wall? (:ball %)) (revert-direction :x %)
                         :else %))
                     (#(if-let [collision (collide? % (:ball %))]
-                        (do
-                          (println "COLLIDE!")
-                          (increase-ball-speed
-                           (revert-direction :y
-                                             (check-momentum (:player collision) %)))) %)))))))
+                        (increase-ball-speed
+                         (revert-direction :y
+                                           (check-momentum (:player collision) %))) %)))))))
 
 (defn game-loop [game]
   (if (= (-> game :game-state :game :state) :running)
