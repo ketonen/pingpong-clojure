@@ -15,7 +15,7 @@
 
 (defn value-writer [key value]
   (cond (= key :start-time) (str value)
-        (and (= key :ball) (= false (:visible value))) (dissoc value :position)
+        (and (= key :ball) (false? (:visible value))) (dissoc value :position)
         :else value))
 
 (defn get-game [games channel]
@@ -29,8 +29,8 @@
 (def game-loop-object (atom nil))
 
 (defn get-awailable-games [games] (vec (map #(select-keys % [:name])
-                                            (->> (filter (comp nil? :playerTwo) games)
-                                                 (map #(get-in % [:playerOne]))))))
+                                            (map (fn* [game] (get-in game [:playerOne]))
+                                                 (filter (comp nil? :playerTwo) games)))))
 
 (defmulti add-channel-to-game (fn [& x] (second x)))
 
@@ -73,7 +73,7 @@
                                                      player (if (= channel (-> game :playerOne :channel)) :playerOne :playerTwo)]
                                                  (update-game-state! channel (assoc-in game [:game-state player :input event] state))))
 
-(defn local-game? [game] (= :local (-> game :game-type)))
+(defn local-game? [game] (= :local (:game-type game)))
 
 (defn update-local-game-input [game channel player input value] (when (local-game? game)
                                                                   (update-game-state! channel (assoc-in game [:game-state player :input input] value))))

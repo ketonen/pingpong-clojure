@@ -58,7 +58,7 @@
                                  [barPlayerOne (:playerOne game-state)
                                   barPlayerTwo (:playerTwo game-state)
                                   obj-steps (get-in obj [:step])
-                                  y-direction (if (> (:y obj-steps) 0) :down :up)]
+                                  y-direction (if (pos? (:y obj-steps)) :down :up)]
                                   (cond
                                     (and (= y-direction :down) (collide-bar? obj barPlayerOne)) {:player :playerOne :object obj}
                                     (and (= y-direction :up) (collide-bar? obj barPlayerTwo)) {:player :playerTwo :object obj})))
@@ -68,7 +68,7 @@
 
 (defn object-hit-side-wall? [obj]
   (let [ball-steps (get-in obj [:step])
-        x-direction (if (< (:x ball-steps) 0) :down :up)]
+        x-direction (if (neg? (:x ball-steps)) :down :up)]
     (or
      (and
       (= x-direction :down)
@@ -82,8 +82,8 @@
 (defn increase-ball-axis [game-state k]
   (if (< (abs (get-in game-state [:ball :step k])) 1)
     (cond
-      (< (get-in game-state [:ball :step k]) 0) (update-in game-state [:ball :step k] - 0.1)
-      (> (get-in game-state [:ball :step k]) 0) (update-in game-state [:ball :step k] + 0.1)
+      (neg? (get-in game-state [:ball :step k])) (update-in game-state [:ball :step k] - 0.1)
+      (pos? (get-in game-state [:ball :step k])) (update-in game-state [:ball :step k] + 0.1)
       :else game-state)
     game-state))
 
@@ -98,7 +98,7 @@
   (cond
     (and (< (+ (get-in game-state [k :width]) (get-in game-state [k :x])) 100) (get-in game-state [k :input :rightDown]))
     (update-in game-state [k :x] inc)
-    (and (> (get-in game-state [k :x]) 0) (get-in game-state [k :input :leftDown]))
+    (and (pos? (get-in game-state [k :x])) (get-in game-state [k :input :leftDown]))
     (update-in game-state [k :x] dec)
     :else game-state))
 
@@ -109,20 +109,20 @@
 
 (defn add-momentum [game-state f]
   (cond
-    (= (get-in game-state [:ball :step :x]) 0) (assoc-in game-state [:ball :step :x] (f 0.2))
+    (zero? (get-in game-state [:ball :step :x])) (assoc-in game-state [:ball :step :x] (f 0.2))
     :else (update-in game-state [:ball :step :x] f 0.2)))
 
 (defn check-momentum [collision game-state]
   (cond
     (>= (get-in game-state [:ball :step :x]) 0)
     (cond
-      (= true (get-in game-state [collision :input :rightDown])) (add-momentum game-state +)
-      (= true (get-in game-state [collision :input :leftDown])) (add-momentum game-state -)
+      (true? (get-in game-state [collision :input :rightDown])) (add-momentum game-state +)
+      (true? (get-in game-state [collision :input :leftDown])) (add-momentum game-state -)
       :else game-state)
     (<= (get-in game-state [:ball :step :x]) 0)
     (cond
-      (= true (get-in game-state [collision :input :leftDown])) (add-momentum game-state -)
-      (= true (get-in game-state [collision :input :rightDown])) (add-momentum game-state +)
+      (true? (get-in game-state [collision :input :leftDown])) (add-momentum game-state -)
+      (true? (get-in game-state [collision :input :rightDown])) (add-momentum game-state +)
       :else game-state)
     :else game-state))
 
@@ -135,7 +135,7 @@
 
 (defn now [] (t/now))
 
-(defn expired-bonus? [bonus] (= 1 (compare (-> 10 t/seconds t/ago) (-> bonus :start-time))))
+(defn expired-bonus? [bonus] (= 1 (compare (-> 10 t/seconds t/ago) (:start-time bonus))))
 
 (defn remove-expired-bonuses-from-player [game-state k]
   (assoc-in game-state [k :bonuses] (remove expired-bonus? (get-in game-state [k :bonuses]))))
@@ -155,14 +155,14 @@
         (update-in [:playerTwo :bonuses] concat (map (fn [x] {:name (-> x :object :name) :start-time (now)}) playerTwoCollisions)))))
 
 (defn double-bar-if-bonus [game-state k]
-  (let [bonuses (map #(:name %) (-> game-state k :bonuses))]
+  (let [bonuses (map :name (-> game-state k :bonuses))]
     (cond
       (some #(= "double-bar" %) bonuses) (assoc-in game-state [k :width] 40)
       :else (assoc-in game-state [k :width] 20))))
 
 (defn set-ball-visibility-if-bonus [game-state]
-  (let [bonuses (concat (map #(:name %) (-> game-state :playerOne :bonuses))
-                        (map #(:name %) (-> game-state :playerTwo :bonuses)))]
+  (let [bonuses (concat (map :name (-> game-state :playerOne :bonuses))
+                        (map :name (-> game-state :playerTwo :bonuses)))]
     (if
      (some #(= "invisible-ball" %) bonuses) (assoc-in game-state [:ball :visible] false)
      (assoc-in game-state [:ball :visible] true))))
