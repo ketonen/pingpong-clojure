@@ -32,11 +32,11 @@
 (.addEventListener js/window "keydown" keydown-listener)
 (.addEventListener js/window "keyup" keyup-listener)
 
-(defn bar-location [id] (-> (. js/document (getElementById id))
+(defn bar-location [id] (-> (.getElementById js/document id)
                             r/dom-node
                             .getBoundingClientRect))
 
-(defn ball-location [] (-> (. js/document (getElementById "ball"))
+(defn ball-location [] (-> (.getElementById js/document "ball")
                            r/dom-node
                            .getBoundingClientRect))
 
@@ -61,7 +61,7 @@
                 (cond (= state "running") [:div
                                            [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
                                             (when (-> @game-state :ball :visible) [ball (:ball @game-state)])
-                                            (let [bonuses (-> @game-state :bonuses)]
+                                            (let [bonuses (:bonuses @game-state)]
                                               (doall (map-indexed (fn [index item]
                                                                     ^{:key (str "bl-" index)}
                                                                     [ball item]) bonuses)))]
@@ -71,10 +71,11 @@
                       :else [c/game-type-selection conn game-type-selection-options game-type-selection-options-defaults])))
 
 (defn game-ui []
-  (cond (and (empty? @game-state) (= (-> @game-type-selection-options :game-type) :online)) [c/game-selection conn game-type-selection-options game-type-selection-options-defaults]
+  (cond (and (empty? @game-state) (= (:game-type @game-type-selection-options) :online))
+        [c/game-selection conn game-type-selection-options game-type-selection-options-defaults]
         :else [game]))
 
-(r/render-component [game-ui] (. js/document (getElementById "app")))
+(r/render-component [game-ui] (.getElementById js/document "app"))
 
 (defn on-js-reload []
   ;; optionally touch your game-state to force rerendering depending on

@@ -8,10 +8,10 @@
   ([conn msg data] (.send conn (.stringify js/JSON (js-obj "command" msg "extra" (clj->js data)))))
   ([conn msg] (.send conn (.stringify js/JSON (js-obj "command" msg)))))
 
-(defn errors? [game-type-selection-options] (let [playerOneName (-> @game-type-selection-options :playerOneName)
-                       playerTwoName (-> @game-type-selection-options :playerTwoName)
+(defn errors? [game-type-selection-options] (let [playerOneName (:playerOneName @game-type-selection-options)
+                       playerTwoName (:playerTwoName @game-type-selection-options)
                        namesEmpty (and (empty? playerOneName) (empty? playerTwoName))
                        namesAreSame (= playerOneName playerTwoName)
-                       namesTooShort (or (< (-> playerOneName count) 3)
-                                         (< (-> playerTwoName count) 3))]
+                       namesTooShort (or (< (count playerOneName) 3)
+                                         (< (count playerTwoName) 3))]
                    {:namesEmpty namesEmpty :namesAreSame namesAreSame :namesTooShort namesTooShort}))
