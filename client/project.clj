@@ -13,6 +13,7 @@
                  [reagent "0.8.1"]]
 
   :plugins [[lein-figwheel "0.5.19"]
+            [lein-kibit "0.1.8"]
             [lein-cljsbuild "1.1.7" :exclusions [[org.clojure/clojure]]]]
 
   :source-paths ["src"]
