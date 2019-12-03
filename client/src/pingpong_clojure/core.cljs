@@ -10,7 +10,7 @@
 (println "This text is printed from src/pingpong-clojure/core.cljs. Go ahead and edit it and see reloading in action.")
 
 (def conn (js/WebSocket. "ws://127.0.0.1:9090/ws"))
-(set! (.-onopen conn) (fn [e] (println "CONNECTION ESTABLISHED")))
+(set! (.-onopen conn) (fn [_] (println "CONNECTION ESTABLISHED")))
 (set! (.-onmessage conn)
       (fn [e]
         (let [data (js->clj (.parse js/JSON (.-data e)) :keywordize-keys true)]
@@ -21,10 +21,10 @@
 
 
 (defn update-input-state! [key value]
-  (if (= key "ArrowRight") (h/send-to-server conn (if value "own-right-down" "own-right-up")))
-  (if (= key "ArrowLeft") (h/send-to-server conn (if value "own-left-down" "own-left-up")))
-  (if (= key "s") (h/send-to-server conn (if value "enemy-right-down" "enemy-right-up")))
-  (if (= key "a") (h/send-to-server conn (if value "enemy-left-down" "enemy-left-up"))))
+  (when (= key "ArrowRight") (h/send-to-server conn (if value "own-right-down" "own-right-up")))
+  (when (= key "ArrowLeft") (h/send-to-server conn (if value "own-left-down" "own-left-up")))
+  (when (= key "s") (h/send-to-server conn (if value "enemy-right-down" "enemy-right-up")))
+  (when (= key "a") (h/send-to-server conn (if value "enemy-left-down" "enemy-left-up"))))
 
 (defn keydown-listener [event] (update-input-state! (.-key event) true))
 (defn keyup-listener [event] (update-input-state! (.-key event) false))

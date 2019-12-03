@@ -1,13 +1,12 @@
 (ns server.core
-  (:require [compojure.handler :as handler]
-            [compojure.core :refer :all]
+  (:require [compojure.handler :as handler :refer [site]]
+            [compojure.core :refer [defroutes GET]]
             [cheshire.core :refer :all]
-            [compojure.handler :refer [site]]
             [ring.middleware.reload :as reload]
-            [server.logic :refer [game-loop initial-game-state]]
-            [clojure.data.json :as json])
-  (:use [org.httpkit.server :only [run-server send! with-channel on-close on-receive]]
-        [overtone.at-at]))
+            [server.logic :refer [game-loop initial-game-state initial-game-state]]
+            [clojure.data.json :as json]
+            [overtone.at-at :as at])
+  (:use [org.httpkit.server :only [run-server send! with-channel on-close on-receive]]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,19 +54,19 @@
   (let [x (map #(if (or (= (:channel (:playerOne %)) channel) (= (:channel (:playerTwo %)) channel)) d %) @games)]
     (reset! games x)))
 
-(def my-pool (mk-pool))
+(def my-pool (at/mk-pool))
 
 (defn start-game []
-  (every 30 #(do
-               (doseq [x (remove (fn [x] (= (-> x :game-state :game :state) :waiting-player)) @games)]
-                 (let [gs (:game-state x)]
-                   (send-changes-to-clients gs (-> x :playerOne :channel))
-                   (if-let [c (-> x :playerTwo :channel)]
-                     (send-changes-to-clients gs c))))
-               (reset! games (remove (fn [g] (= :game-over (-> g :game-state :game :state))) @games))
-               (let [g (vec (doall (pmap game-loop @games)))]
-                 (reset! games g)))
-         my-pool))
+  (at/every 30 #(do
+                  (doseq [x (remove (fn [x] (= (-> x :game-state :game :state) :waiting-player)) @games)]
+                    (let [gs (:game-state x)]
+                      (send-changes-to-clients gs (-> x :playerOne :channel))
+                      (if-let [c (-> x :playerTwo :channel)]
+                        (send-changes-to-clients gs c))))
+                  (reset! games (remove (fn [g] (= :game-over (-> g :game-state :game :state))) @games))
+                  (let [g (vec (doall (pmap game-loop @games)))]
+                    (reset! games g)))
+            my-pool))
 
 (defn update-input-state [channel event state] (let [game (get-game @games channel)
                                                      player (if (= channel (-> game :playerOne :channel)) :playerOne :playerTwo)]
@@ -84,7 +83,7 @@
               (fn [status]
                 (reset! games (remove-channel-from-games @games channel))
                 (when (empty? @games)
-                  (stop @game-loop-object))
+                  (at/stop @game-loop-object))
                 (println "channel closed: " status)))
     (on-receive channel
                 (fn [msg]
@@ -93,7 +92,7 @@
                     (condp = command
                       "start-local" (do
                                       (println "STARTING LOCAL GAME")
-                                      (stop-and-reset-pool! my-pool)
+                                      (at/stop-and-reset-pool! my-pool)
 
                                       (let [game (add-channel-to-game channel :local (:playerOneName (:extra data)) (:playerTwoName (:extra data)))
                                             game (assoc-in game [:game-state :game :state] :running)]
@@ -103,7 +102,7 @@
                                         (reset! game-loop-object (start-game))))
                       "start-online" (do
                                        (println "STARTING ONLINE GAME")
-                                       (stop-and-reset-pool! my-pool)
+                                       (at/stop-and-reset-pool! my-pool)
                                        (let [game (add-channel-to-game channel :online (:playerOneName (:extra data)))
                                              game (assoc-in game [:game-state :game :state] :waiting-player)]
                                          (swap! games conj game))
@@ -121,11 +120,11 @@
                                           game (assoc-in game [:game-state :game :state] :running)]
                                       (swap! games assoc-in [index] game))
 
-                                    (stop-and-reset-pool! my-pool)
+                                    (at/stop-and-reset-pool! my-pool)
                                     (when (not= game-loop-object nil)
                                       (reset! game-loop-object (start-game))))
                       "stop" (do (println "STOPPING...")
-                                 (stop-and-reset-pool! my-pool))
+                                 (at/stop-and-reset-pool! my-pool))
                       "own-right-down" (update-input-state channel :rightDown true)
                       "own-left-down" (update-input-state channel :leftDown true)
                       "own-right-up" (update-input-state channel :rightDown false)
