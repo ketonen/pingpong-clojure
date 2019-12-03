@@ -1,122 +1,107 @@
 (ns pingpong-clojure.components
-  (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
    [reagent.core :as r :refer [atom]]
-   [pingpong-clojure.helpers :as h]
-   [cljs.core.async :refer [<!]]))
+   [re-frame.core :as rf]
+   [pingpong-clojure.helpers :as h]))
 
-(defn game-over [conn game-state game-type-selection-options game-type-selection-options-defaults]
+(defn game-over [game-state]
   [:div {:class "modal-dialog" :role "document"}
    [:div {:class "modal-content"}
     [:div {:class "modal-header"}
      [:h5 {:class "modal-title"} "Game over"]]
-    [:div {:class "modal-body"} "Winner: " (:winner @game-state)]
+    [:div {:class "modal-body"} "Winner: " (:winner game-state)]
     [:div {:class "modal-footer"}
-     [:button {:type "button" :class "btn btn-danger"
-               :on-click #(do
-                            (reset! game-state {})
-                            (reset! game-type-selection-options game-type-selection-options-defaults))} "Cancel"]
+     [:button {:type "button" :class "btn btn-danger" :on-click #(rf/dispatch [:initialize])} "Cancel"]
      [:button {:type "button" :class "btn btn-primary"
-               :on-click #(h/send-to-server conn "start-local" {:playerOneName (:playerOneName @game-type-selection-options)
-                                                                :playerTwoName (:playerTwoName @game-type-selection-options)})}
-      "Play again"]]]])
+               :on-click #(rf/dispatch [:start-game :local])} "Play again"]]]])
 
-(defn game-type-selection [conn game-type-selection-options game-type-selection-options-defaults]
-  (let [game-type (:game-type (deref game-type-selection-options))]
-    (cond (= game-type :not-selected)
-          [:div {:class "modal-dialog" :role "document"}
-           [:div {:class "modal-content"}
-            [:div {:class "modal-header"}
-             [:h5 {:class "modal-title"} "Lets play a game"]]
-            [:div {:class "modal-footer"}
-             [:button {:type "button" :class "btn btn-primary"
-                       :on-click #(swap! game-type-selection-options assoc :game-type :local)}
-              "Local game"]
-             [:button {:type "button" :class "btn btn-primary"
-                       :on-click #(swap! game-type-selection-options assoc :game-type :online)}
-              "Online game"]]]]
-          (= game-type :local)
-          [:div {:class "modal-dialog" :role "document"}
-           [:div {:class "modal-content"}
-            [:div {:class "modal-header"}
-             [:h5 {:class "modal-title"} "Local game"]]
-            [:div {:class "modal-body"}
-             [:form {:class "form-inline"}
-              [:div {:class "input-group"}
-               [:input {:type "text"
-                        :class "form-control mr-sm-2"
-                        :placeholder "Player 1 Name"
-                        :value (:playerOneName (deref game-type-selection-options))
-                        :on-change #(swap! game-type-selection-options assoc :playerOneName (-> % .-target .-value))}]]
-              [:div {:class "input-group"}
-               [:input {:type "text"
-                        :class "form-control"
-                        :placeholder "Player 2 Name"
-                        :value (:playerTwoName (deref game-type-selection-options))
-                        :on-change #(swap! game-type-selection-options assoc :playerTwoName (-> % .-target .-value))}]]]
-             [:div
-              (let [errors (h/errors? game-type-selection-options)]
-                [:ul
-                 (when (and (not (:namesEmpty errors)) (:namesAreSame errors))
-                   [:li "Players names can not be same"])
-                 (when (:namesTooShort errors)
-                   [:li "Name must be at least 3 char long"])])]]
-            [:div {:class "modal-footer"}
-             [:button {:type "button" :class "btn btn-primary"
-                       :on-click #(reset! game-type-selection-options game-type-selection-options-defaults)}
-              "Cancel"]
-             [:button
-              {:type "button"
-               :disabled (some true? (vals (h/errors? game-type-selection-options)))
-               :class "btn btn-primary"
-               :on-click #(h/send-to-server conn "start-local" {:playerOneName (:playerOneName @game-type-selection-options)
-                                                                :playerTwoName (:playerTwoName @game-type-selection-options)})} "Start"]]]])))
+(defn game-type-selection [] [:div {:class "modal-dialog" :role "document"}
+                              [:div {:class "modal-content"}
+                               [:div {:class "modal-header"}
+                                [:h5 {:class "modal-title"} "Lets play a game"]]
+                               [:div {:class "modal-footer"}
+                                [:button {:type "button" :class "btn btn-primary"
+                                          :on-click #(rf/dispatch [:game-type-selected :local])}
+                                 "Local game"]
+                                [:button {:type "button" :class "btn btn-primary"
+                                          :on-click #(rf/dispatch [:game-type-selected :online])}
+                                 "Online game"]]]])
 
-(defn join-game [conn selectedGame joining-player-name] [:div {:class "modal-dialog" :role "document"}
-                                                         [:div {:class "modal-content"}
-                                                          [:div {:class "modal-header"}
-                                                           [:h5 {:class "modal-title"} "Give your name"]]
-                                                          [:div {:class "modal-body"}
-                                                           [:input {:type "text"
-                                                                    :class "form-control"
-                                                                    :placeholder "Your name"
-                                                                    :value @joining-player-name
-                                                                    :on-change #(reset! joining-player-name (-> % .-target .-value))}]]
-                                                          [:div {:class "modal-footer"}
-                                                           [:button {:type "button" :class "btn btn-primary"
-                                                                     :on-click #(h/send-to-server conn "join-game" {:game-name @selectedGame
-                                                                                                                    :playerTwoName @joining-player-name})}
-                                                            "Join game"]]]])
+(defn validation-messages [errors] [:div
+                                    [:ul
+                                     (when (and (not (:namesEmpty errors)) (:namesAreSame errors))
+                                       [:li "Players names can not be same"])
+                                     (when (:namesTooShort errors)
+                                       [:li "Name must be at least 3 char long"])]])
 
-(defn online-game-listing [selectedGame game-type-selection-options game-type-selection-options-defaults]
+(defn local-game-menu []
+  (let [errors (h/errors? @(rf/subscribe [:options]))]
+    [:div {:class "modal-dialog" :role "document"}
+     [:div {:class "modal-content"}
+      [:div {:class "modal-header"}
+       [:h5 {:class "modal-title"} "Local game"]]
+      [:div {:class "modal-body"}
+       [:form {:class "form-inline"}
+        [:div {:class "input-group"}
+         [:input {:type "text"
+                  :class "form-control mr-sm-2"
+                  :placeholder "Player 1 Name"
+                  :value (:playerOneName @(rf/subscribe [:options]))
+                  :on-change #(rf/dispatch [:player-name-updated [:playerOneName (-> % .-target .-value)]])}]]
+        [:div {:class "input-group"}
+         [:input {:type "text"
+                  :class "form-control"
+                  :placeholder "Player 2 Name"
+                  :value (:playerTwoName @(rf/subscribe [:options]))
+                  :on-change #(rf/dispatch [:player-name-updated [:playerTwoName (-> % .-target .-value)]])}]]]
+       [validation-messages errors]]
+      [:div {:class "modal-footer"}
+       [:button {:type "button" :class "btn btn-primary"
+                 :on-click #(rf/dispatch [:game-type-selected :not-selected])} "Cancel"]
+       [:button
+        {:type "button"
+         :disabled (some true? (vals errors))
+         :class "btn btn-primary"
+         :on-click #(rf/dispatch [:start-game :local])} "Start"]]]]))
+
+(defn join-game [] [:div {:class "modal-dialog" :role "document"}
+                    [:div {:class "modal-content"}
+                     [:div {:class "modal-header"}
+                      [:h5 {:class "modal-title"} "Give your name"]]
+                     [:div {:class "modal-body"}
+                      [:input {:type "text"
+                               :class "form-control"
+                               :placeholder "Your name"
+                               :value (:playerTwoName @(rf/subscribe [:options]))
+                               :on-change #(rf/dispatch [:player-name-updated [:playerTwoName (-> % .-target .-value)]])}]]
+                     [:div {:class "modal-footer"}
+                      [:button {:type "button" :class "btn btn-primary"
+                                :on-click #(rf/dispatch [:start-game :join-game])}
+                       "Join game"]]]])
+
+(defn online-game-listing []
   [:div {:class "modal-dialog" :role "document"}
    [:div {:class "modal-content"}
     [:div {:class "modal-header"}
      [:h5 {:class "modal-title"} "Choose existing game or create new"]]
     [:div {:class "modal-body"}
      [:div {:class "list-group"}
-      (cond (:awailable-games (deref game-type-selection-options))
-            (for [game (:awailable-games (deref game-type-selection-options))]
-              ^{:key (str "tr-" game)}
-              [:a {:href "#" :class "list-group-item list-group-item-action"
-                   :on-click #(reset! selectedGame (:name game))} (:name game)])
-            :else
-            ^{:key (str "tr-no-games")}
-            [:li {:class "list-group-item list-group-item-action"} "No awailable games"])]]
+      (let [games (:awailable-games @(rf/subscribe [:options]))]
+        (cond (empty? games)
+              ^{:key (str "tr-no-games")}
+              [:li {:class "list-group-item list-group-item-action"} "No awailable games"]
+              :else (for [game games]
+                      ^{:key (str "tr-" game)}
+                      [:a {:href "#" :class "list-group-item list-group-item-action"
+                           :on-click #(rf/dispatch [:select-game (:name game)])} (:name game)])))]]
     [:div {:class "modal-footer"}
-     [:button {:type "button" :class "btn btn-light"
-               :on-click #(go (let [response (<! (h/get-awailable-games))]
-                                (println (:body response))
-                                (seq (:body response)) (swap! game-type-selection-options assoc :awailable-games (seq (:body response)))))}
-      "Refresh"]
+     [:button {:type "button" :class "btn btn-light" :on-click #(rf/dispatch [:update-awailable-games])} "Refresh"]
      [:button {:type "button" :class "btn btn-danger"
-               :on-click #(reset! game-type-selection-options game-type-selection-options-defaults)}
-      "Cancel"]
+               :on-click #(rf/dispatch [:game-type-selected :not-selected])} "Cancel"]
      [:button {:type "button" :class "btn btn-primary"
-               :on-click #(swap! game-type-selection-options assoc :online-game-selection :create-new-game)}
-      "Create new game"]]]])
+               :on-click #(rf/dispatch [:game-type-selected :new-online-game])} "Create new game"]]]])
 
-(defn create-new-online-game [conn playerOneName game-type-selection-options game-type-selection-options-defaults]
+(defn create-new-online-game []
   [:div {:class "modal-dialog" :role "document"}
    [:div {:class "modal-content"}
     [:div {:class "modal-header"}
@@ -126,27 +111,15 @@
       [:input {:type "text"
                :class "form-control"
                :placeholder "Your name"
-               :value @playerOneName
-               :on-change #(reset! playerOneName (-> % .-target .-value))}]]]
+               :value (:playerOneName @(rf/subscribe [:options]))
+               :on-change #(rf/dispatch [:player-name-updated [:playerOneName (-> % .-target .-value)]])}]]]
     [:div {:class "modal-footer"}
      [:button {:type "button" :class "btn btn-danger"
-               :on-click #(reset! game-type-selection-options game-type-selection-options-defaults)} "Cancel"]
+               :on-click #(reset! h/game-type-selection-options h/game-type-selection-options-defaults)} "Cancel"]
      [:button {:type "button" :class "btn btn-primary"
-               :on-click #(do (h/send-to-server conn "start-online" {:playerOneName @playerOneName})
-                              (swap! game-type-selection-options assoc :online-game-selection nil))} "Create game"]]]])
+               :on-click #(rf/dispatch [:start-game :online])} "Create game"]]]])
 
-(defn game-selection [conn game-type-selection-options game-type-selection-options-defaults]
-  (let [playerOneName (atom "") selectedGame (atom "") joining-player-name (atom "")]
-    (go (let [response (<! (h/get-awailable-games))]
-          (seq (:body response)) (swap! game-type-selection-options assoc :awailable-games (seq (:body response)))))
-    (fn []
-      (cond (nil? (:online-game-selection (deref game-type-selection-options)))
-            (cond (seq @selectedGame) [join-game conn selectedGame joining-player-name]
-                  :else [online-game-listing selectedGame game-type-selection-options game-type-selection-options-defaults])
-            :else [create-new-online-game conn playerOneName game-type-selection-options game-type-selection-options-defaults]))))
-
-
-(defn no-awailable-games [game-type-selection-options game-type-selection-options-defaults]
+(defn no-awailable-games []
   [:div {:class "modal-dialog" :role "document"}
    [:div {:class "modal-content"}
     [:div {:class "modal-header"}
@@ -154,7 +127,48 @@
     [:div {:class "modal-body"} "No awailable games at the moment. Create new game?"]
     [:div {:class "modal-footer"}
      [:button {:type "button" :class "btn btn-danger"
-               :on-click #(reset! game-type-selection-options game-type-selection-options-defaults)} "Cancel"]
+               :on-click #(reset! h/game-type-selection-options h/game-type-selection-options-defaults)} "Cancel"]
      [:button {:type "button" :class "btn btn-primary"
-               :on-click #(swap! game-type-selection-options assoc :game-type :online)}
-      "Create new game"]]]])
+               :on-click #(rf/dispatch [:new-online-game true])} "Create new game"]]]])
+
+(defn bar [id player]
+  [:div {:id id
+         :class (clojure.string/join " " (map #(:name %) (:bonuses player)))
+         :style {:max-width (str (:width player) "%")
+                 :left (str (:x player) "%")
+                 :background-color (:color player)}}])
+
+(defn ball [m] [:circle {:style {:fill (:color m)}
+                         :id "ball"
+                         :cx (str (* js/window.innerWidth (/ (get-in m [:position :x]) 100)) "px")
+                         :cy (str (* js/window.innerHeight (/ (get-in m [:position :y]) 100)) "px")
+                         :r (str (get-in m [:radius]) "%")}])
+
+(defn game-view [game-state] [:div
+                              [:svg {:style {:width "100%" :height "100%" :position "absolute"}}
+                               (when (-> game-state :ball :visible) [ball (:ball game-state)])
+                               (let [bonuses (:bonuses game-state)]
+                                 (doall (map-indexed (fn [index item]
+                                                       ^{:key (str "bl-" index)}
+                                                       [ball item]) bonuses)))]
+                              [bar "enemy" (:playerTwo game-state)]
+                              [bar "own" (:playerOne game-state)]])
+
+(defn game [game-state]
+  (let [state (-> game-state :game :state)]
+    (condp = state
+      "running" [game-view game-state]
+      "game-over" [game-over game-state]
+      [game-type-selection])))
+
+(defn menu []
+  (let [options @(rf/subscribe [:options])
+        game-type (:game-type options)
+        selected-game (:selected-game options)]
+    (if selected-game
+      [join-game]
+      (condp = game-type
+        :not-selected [game-type-selection]
+        :local [local-game-menu]
+        :online [online-game-listing]
+        :new-online-game [create-new-online-game]))))

@@ -9,8 +9,12 @@
   :dependencies [[org.clojure/clojure "1.10.0"]
                  [org.clojure/clojurescript "1.10.520"]
                  [org.clojure/core.async  "0.4.500"]
+                 [cljs-ajax "0.7.5"]
                  [cljs-http "0.1.46"]
-                 [reagent "0.8.1"]]
+                 [reagent "0.9.0-rc3"]
+                 [binaryage/devtools "0.9.10"]
+                 [day8.re-frame/http-fx "v0.2.0"]
+                 [re-frame "0.11.0-rc3"]]
 
   :plugins [[lein-figwheel "0.5.19"]
             [lein-kibit "0.1.8"]

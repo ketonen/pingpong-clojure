@@ -74,8 +74,9 @@
 
 (defn local-game? [game] (= :local (:game-type game)))
 
-(defn update-local-game-input [game channel player input value] (when (local-game? game)
-                                                                  (update-game-state! channel (assoc-in game [:game-state player :input input] value))))
+(defn update-local-game-input [game channel player input value]
+  (when (local-game? game)
+    (update-game-state! channel (assoc-in game [:game-state player :input input] value))))
 
 (defn handler [request]
   (with-channel request channel
