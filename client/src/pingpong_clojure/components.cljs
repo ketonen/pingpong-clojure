@@ -115,7 +115,7 @@
                :on-change #(rf/dispatch [:player-name-updated [:playerOneName (-> % .-target .-value)]])}]]]
     [:div {:class "modal-footer"}
      [:button {:type "button" :class "btn btn-danger"
-               :on-click #(reset! h/game-type-selection-options h/game-type-selection-options-defaults)} "Cancel"]
+               :on-click #(rf/dispatch [:game-type-selected :online])} "Cancel"]
      [:button {:type "button" :class "btn btn-primary"
                :on-click #(rf/dispatch [:start-game :online])} "Create game"]]]])
 

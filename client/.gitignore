@@ -1,5 +1,4 @@
 /resources/public/js/compiled/**
-figwheel_server.log
 pom.xml
 *jar
 /lib/
@@ -12,3 +11,10 @@ pom.xml
 .repl
 .nrepl-port
 .rebel_readline_history
+
+node_modules
+resources/public/js
+.shadow-cljs/
+package-lock.json
+package.json
+shadow-cljs.edn

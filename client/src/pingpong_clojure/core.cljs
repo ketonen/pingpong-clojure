@@ -134,18 +134,14 @@
 (defn render
   []
   (r/render [game-ui]
-            (js/document.getElementById "app")))
+            (.getElementById js/document "app")))
 
-#_(defn ^:dev/after-load clear-cache-and-render!
-    []
-  ;; The `:dev/after-load` metadata causes this function to be called
-  ;; after shadow-cljs hot-reloads code. We force a UI update by clearing
-  ;; the Reframe subscription cache.
-    (rf/clear-subscription-cache!)
-    (render))
+(defn ^:export main
+  []
+  (println "TEST")
+  (render))
 
 (rf/dispatch-sync [:initialize]) ;; put a value into application state
-(render)                         ;; mount the application's ui into '<div id="app" />
 
 (defn on-js-reload []
   ;; optionally touch your game-state to force rerendering depending on
