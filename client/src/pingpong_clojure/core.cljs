@@ -60,9 +60,7 @@
  :bad-http-result
  (fn [db [_ result]]
    (println result)
-   db
-   ;; result is a map containing details of the failure
-   #_(assoc db :failure-http-result result)))
+   db))
 
 (rf/reg-event-fx
  :update-awailable-games
@@ -79,9 +77,9 @@
    (let [db (:db cofx)]
      (condp = game-type
        :join-game (send-to-server conn "join-game" {:game-name (-> db :options :selected-game)
-                                                      :playerTwoName (-> db :options :playerTwoName)})
-       :local (send-to-server conn "start-local" {:playerOneName (-> db :options :playerOneName)
                                                     :playerTwoName (-> db :options :playerTwoName)})
+       :local (send-to-server conn "start-local" {:playerOneName (-> db :options :playerOneName)
+                                                  :playerTwoName (-> db :options :playerTwoName)})
        :online (do (send-to-server conn "start-online" {:playerOneName (-> db :options :playerOneName)})
                    (rf/dispatch [:game-type-selected :online]))))))
 
@@ -99,6 +97,12 @@
  :options
  (fn [db _]
    (:options db)))
+
+(rf/reg-sub
+ :errors
+ :<- [:options]
+ (fn [options _]
+   (h/errors? options)))
 
 (rf/reg-sub
  :game
@@ -138,14 +142,6 @@
 
 (defn ^:export main
   []
-  (println "TEST")
-  (render))
-
-(rf/dispatch-sync [:initialize]) ;; put a value into application state
-
-(defn on-js-reload []
-  ;; optionally touch your game-state to force rerendering depending on
-  ;; your application
-  ;; (swap! game-state update-in [:__figwheel_counter] inc)
-  )
+  (rf/dispatch-sync [:initialize])
+  (render)) ;; put a value into application state
 

@@ -37,6 +37,6 @@
                                   :output-dir "resources/public/js"
                                   :modules {:client {:init-fn pingpong-clojure.core/main}}
                                   :devtools {:http-root "resources/public"
-                                             :http-port 8280}}}}
+                                             :http-port 3449}}}}
 
   :aliases {"dev-auto" ["shadow" "watch" "client"]})

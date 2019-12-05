@@ -1,6 +1,5 @@
 (ns pingpong-clojure.components
   (:require
-   [reagent.core :as r :refer [atom]]
    [re-frame.core :as rf]
    [pingpong-clojure.helpers :as h]))
 
@@ -35,7 +34,7 @@
                                        [:li "Name must be at least 3 char long"])]])
 
 (defn local-game-menu []
-  (let [errors (h/errors? @(rf/subscribe [:options]))]
+  (let [errors @(rf/subscribe [:errors])]
     [:div {:class "modal-dialog" :role "document"}
      [:div {:class "modal-content"}
       [:div {:class "modal-header"}
