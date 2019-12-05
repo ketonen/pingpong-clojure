@@ -1,7 +1,6 @@
 (ns pingpong-clojure.components
   (:require
-   [re-frame.core :as rf]
-   [pingpong-clojure.helpers :as h]))
+   [re-frame.core :as rf]))
 
 (defn game-over [game-state]
   [:div {:class "modal-dialog" :role "document"}
@@ -117,18 +116,6 @@
                :on-click #(rf/dispatch [:game-type-selected :online])} "Cancel"]
      [:button {:type "button" :class "btn btn-primary"
                :on-click #(rf/dispatch [:start-game :online])} "Create game"]]]])
-
-(defn no-awailable-games []
-  [:div {:class "modal-dialog" :role "document"}
-   [:div {:class "modal-content"}
-    [:div {:class "modal-header"}
-     [:h5 {:class "modal-title"} "New game"]]
-    [:div {:class "modal-body"} "No awailable games at the moment. Create new game?"]
-    [:div {:class "modal-footer"}
-     [:button {:type "button" :class "btn btn-danger"
-               :on-click #(reset! h/game-type-selection-options h/game-type-selection-options-defaults)} "Cancel"]
-     [:button {:type "button" :class "btn btn-primary"
-               :on-click #(rf/dispatch [:new-online-game true])} "Create new game"]]]])
 
 (defn bar [id player]
   [:div {:id id

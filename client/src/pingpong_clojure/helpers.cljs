@@ -1,12 +1,13 @@
-(ns pingpong-clojure.helpers)
+(ns pingpong-clojure.helpers
+  (:require [re-frame.core :as rf]))
 
-(defn errors? [game-type-selection-options] (let [playerOneName (:playerOneName game-type-selection-options)
-                                                  playerTwoName (:playerTwoName game-type-selection-options)
-                                                  namesEmpty (and (empty? playerOneName) (empty? playerTwoName))
-                                                  namesAreSame (= playerOneName playerTwoName)
-                                                  namesTooShort (or (< (count playerOneName) 3)
-                                                                    (< (count playerTwoName) 3))]
-                                              {:namesEmpty namesEmpty :namesAreSame namesAreSame :namesTooShort namesTooShort}))
+(def conn (js/WebSocket. "ws://127.0.0.1:9090/ws"))
+(set! (.-onopen conn) (fn [_] (println "CONNECTION ESTABLISHED")))
+(set! (.-onmessage conn)
+      (fn [e]
+        (let [data (js->clj (.parse js/JSON (.-data e)) :keywordize-keys true)]
+          (rf/dispatch [:game-state-updated data]))))
 
-(defonce game-type-selection-options-defaults {:game-type :not-selected :playerOneName "" :playerTwoName ""})
-(defonce game-type-selection-options (atom {:game-type :not-selected :playerOneName "" :playerTwoName ""}))
+(defn send-to-server
+  ([msg data] (.send conn (.stringify js/JSON (js-obj "command" msg "extra" (clj->js data)))))
+  ([msg] (.send conn (.stringify js/JSON (js-obj "command" msg)))))
