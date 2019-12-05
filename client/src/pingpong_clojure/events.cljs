@@ -3,7 +3,7 @@
             [re-frame.core :as rf]
             [pingpong-clojure.helpers :as h]))
 
-(rf/reg-event-db              ;; sets up initial application state
+(rf/reg-event-db             ;; sets up initial application state
  :initialize                 ;; usage:  (dispatch [:initialize])
  (fn [_ _]                   ;; the two parameters are not important here, so use _
    {:options {:game-type :not-selected :playerOneName "" :playerTwoName ""}
@@ -40,7 +40,6 @@
  (fn [db [_ result]]
    (println result)
    db))
-
 
 (rf/reg-event-fx
  :update-awailable-games

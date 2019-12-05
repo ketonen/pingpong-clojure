@@ -11,8 +11,6 @@
 (devtools/install!)       ;; https://github.com/binaryage/cljs-devtools
 (enable-console-print!)
 
-;; -- Domino 2 - Event Handlers -----------------------------------------------
-
 (println "This text is printed from src/pingpong-clojure/core.cljs. Go ahead and edit it and see reloading in action.")
 
 (defonce input-state (atom {:playerTwo {:leftDown false :rightDown false}

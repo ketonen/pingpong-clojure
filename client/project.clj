@@ -17,7 +17,8 @@
                  [reagent "0.9.0-rc3"]
                  [binaryage/devtools "0.9.10"]
                  [day8.re-frame/http-fx "v0.2.0"]
-                 [re-frame "0.11.0-rc3"]
+                 [re-frame "0.10.9"]
+                 [day8.re-frame/re-frame-10x "0.4.5"]
                  [thheller/shadow-cljs "2.8.76"]]
 
   :plugins [[lein-shadow "0.1.7"]
@@ -37,6 +38,19 @@
                                   :output-dir "resources/public/js"
                                   :modules {:client {:init-fn pingpong-clojure.core/main}}
                                   :devtools {:http-root "resources/public"
-                                             :http-port 3449}}}}
+                                             :http-port 3449}}
+                         :client-with-10x {:target :browser
+                                           :output-dir "resources/public/js"
+                                           :modules {:client {:init-fn pingpong-clojure.core/main
+                                                              :preloads [day8.re-frame-10x.preload]}}
+                                           :dev     {:compiler-options
+                                                     {:closure-defines {re-frame.trace.trace-enabled?        true
+                                                                        day8.re-frame-10x.debug?             true
+                                                                        day8.re-frame.tracing.trace-enabled? true}
+                                                      :external-config
+                                                      {:devtools/config {:features-to-install [:formatters :hints]}}}}
+                                           :devtools {:http-root "resources/public"
+                                                      :http-port 3449}}}}
 
-  :aliases {"dev-auto" ["shadow" "watch" "client"]})
+  :aliases {"dev-auto-10x" ["shadow" "watch" "client-with-10x"]
+            "dev-auto" ["shadow" "watch" "client"]})

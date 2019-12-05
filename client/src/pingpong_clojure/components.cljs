@@ -1,6 +1,5 @@
 (ns pingpong-clojure.components
-  (:require
-   [re-frame.core :as rf]))
+  (:require [re-frame.core :as rf]))
 
 (defn game-over [game-state]
   [:div {:class "modal-dialog" :role "document"}
