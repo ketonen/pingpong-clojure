@@ -22,7 +22,7 @@
           #(or (= (:channel (:playerOne %)) channel) (= (:channel (:playerTwo %)) channel))
           games)))
 
-(defn send-changes-to-clients [game-state channel]
+(defn send-changes-to-channel [game-state channel]
   (send! channel (json/write-str game-state :value-fn value-writer)))
 
 (def game-loop-object (atom nil))
@@ -56,14 +56,19 @@
 
 (def my-pool (at/mk-pool))
 
+(defn filter-games-with-state [games state] (remove (fn [x] (= (-> x :game-state :game :state) state)) games))
+
+(defn send-game-state-to-players [game]
+  (let [gs (:game-state game)]
+    (send-changes-to-channel gs (-> game :playerOne :channel))
+    (when-let [c (-> game :playerTwo :channel)]
+      (send-changes-to-channel gs c))))
+
 (defn start-game []
   (at/every 30 #(do
-                  (doseq [x (remove (fn [x] (= (-> x :game-state :game :state) :waiting-player)) @games)]
-                    (let [gs (:game-state x)]
-                      (send-changes-to-clients gs (-> x :playerOne :channel))
-                      (if-let [c (-> x :playerTwo :channel)]
-                        (send-changes-to-clients gs c))))
-                  (reset! games (remove (fn [g] (= :game-over (-> g :game-state :game :state))) @games))
+                  (doseq [x (filter-games-with-state @games :waiting-player)]
+                    (send-game-state-to-players x))
+                  (reset! games (filter-games-with-state @games :game-over))
                   (let [g (vec (doall (pmap game-loop @games)))]
                     (reset! games g)))
             my-pool))

@@ -135,7 +135,7 @@
 
 (defn now [] (t/now))
 
-(defn expired-bonus? [bonus] (= 1 (compare (-> 10 t/seconds t/ago) (:start-time bonus))))
+(defn expired-bonus? [bonus] (= 1 (compare (-> 6 t/seconds t/ago) (:start-time bonus))))
 
 (defn remove-expired-bonuses-from-player [game-state k]
   (assoc-in game-state [k :bonuses] (remove expired-bonus? (get-in game-state [k :bonuses]))))
