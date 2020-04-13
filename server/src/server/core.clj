@@ -1,12 +1,11 @@
 (ns server.core
   (:require [compojure.handler :as handler :refer [site]]
             [compojure.core :refer [defroutes GET]]
-            [cheshire.core :refer :all]
             [ring.middleware.reload :as reload]
             [server.logic :refer [game-loop initial-game-state initial-game-state]]
             [clojure.data.json :as json]
-            [overtone.at-at :as at])
-  (:use [org.httpkit.server :only [run-server send! with-channel on-close on-receive]]))
+            [overtone.at-at :as at]
+            [org.httpkit.server :refer [run-server send! with-channel on-close on-receive]]))
 
 (set! *warn-on-reflection* true)
 

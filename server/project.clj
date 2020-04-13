@@ -13,8 +13,7 @@
                  [ring/ring-devel "1.8.0"]
                  [ring/ring-core "1.8.0"]
                  [clj-time "0.15.2"]
-                 [criterium "0.4.5"]
-                 [cheshire "5.9.0"]]
+                 [criterium "0.4.5"]]
   :main server.core
   :target-path "target/%s"
   :ring {:handler server.core/app}
