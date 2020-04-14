@@ -73,8 +73,8 @@
             my-pool))
 
 (defn update-player-input [channel event state] (let [game (get-game @games channel)
-                                                     player (if (= channel (-> game :playerOne :channel)) :playerOne :playerTwo)]
-                                                 (update-game-state! channel (assoc-in game [:game-state player :input event] state))))
+                                                      player (if (= channel (-> game :playerOne :channel)) :playerOne :playerTwo)]
+                                                  (update-game-state! channel (assoc-in game [:game-state player :input event] state))))
 
 (defn local-game? [game] (= :local (:game-type game)))
 
@@ -113,7 +113,10 @@
   (when (not= game-loop-object nil)
     (reset! game-loop-object (start-game))))
 
-(defn handle-on-receive [channel]
+(defn handle-on-receive
+  "In online game input is always players own input e.g own-right-down etc.
+   In local game players inputs are separated to own and enemy inputs"
+  [channel]
   (fn [msg]
     (let [data (json/read-json msg)
           command (:command data)]
