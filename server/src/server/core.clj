@@ -27,7 +27,7 @@
 (def game-loop-object (atom nil))
 
 (defn get-awailable-games [games] (vec (map #(select-keys % [:name])
-                                            (map (fn* [game] (get-in game [:playerOne]))
+                                            (map #(:playerOne %)
                                                  (filter (comp nil? :playerTwo) games)))))
 
 (defmulti add-channel-to-game (fn [& x] (second x)))
@@ -145,6 +145,8 @@
     (when (empty? @games)
       (at/stop @game-loop-object))
     (println "channel closed: " status)))
+
+(declare channel)
 
 (defn handler [request]
   (with-channel request channel
