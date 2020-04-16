@@ -120,7 +120,7 @@
   (fn [msg]
     (let [data (json/read-json msg)
           command (:command data)]
-      (condp = command
+      (case command
         "start-local" (start-local-game channel data)
         "start-online" (start-online-game channel data)
         "join-game" (join-online-game data channel)
