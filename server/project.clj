@@ -20,4 +20,6 @@
   :profiles {:dev
              {:dependencies
               [[javax.servlet/servlet-api "2.5"]]}
-             :uberjar {:aot :all}})
+             :uberjar {:aot :all
+                       :dependencies
+                       [[javax.servlet/servlet-api "2.5"]]}})
