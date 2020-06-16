@@ -1,4 +1,5 @@
 (ns server.core
+  (:gen-class)
   (:require [compojure.handler :as handler :refer [site]]
             [compojure.core :refer [defroutes GET]]
             [ring.middleware.reload :as reload]
